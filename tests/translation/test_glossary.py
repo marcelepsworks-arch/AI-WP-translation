@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from app.translation.glossary import GlossaryEntry, load_glossary_files
+from app.translation.glossary import GlossaryEntry, get_relevant_terms, load_glossary_files
+from app.translation.prompt_builder import GlossaryTerm
 
 
 @pytest.fixture
@@ -57,3 +58,67 @@ def test_load_glossary_files_merges_multiple_files(tmp_path: Path):
     entries = load_glossary_files([file_a, file_b])
 
     assert [e.source for e in entries] == ["rover", "datum"]
+
+
+def test_get_relevant_terms_returns_only_matching_entries():
+    entries = [
+        GlossaryEntry(source="base station", target="estación base", language="es", status="mandatory"),
+        GlossaryEntry(source="rover", target="rover", language="es", status="mandatory"),
+    ]
+
+    result = get_relevant_terms("The base station broadcasts corrections.", entries)
+
+    assert result == [GlossaryTerm(source="base station", target="estación base", notes="")]
+
+
+def test_get_relevant_terms_is_case_insensitive():
+    entries = [GlossaryEntry(source="Rover", target="rover", language="es", status="mandatory")]
+
+    result = get_relevant_terms("The ROVER receives corrections.", entries)
+
+    assert len(result) == 1
+    assert result[0].source == "Rover"
+
+
+def test_get_relevant_terms_matches_whole_words_only():
+    entries = [GlossaryEntry(source="fix", target="solución fija", language="es", status="mandatory")]
+
+    result = get_relevant_terms("Please fix the prefix and suffix issues.", entries)
+
+    # "fix" must match standalone, not inside "prefix"/"suffix"
+    assert len(result) == 1
+
+
+def test_get_relevant_terms_filters_by_language():
+    entries = [
+        GlossaryEntry(source="rover", target="rover", language="es", status="mandatory"),
+        GlossaryEntry(source="rover", target="véhicule mobile", language="fr", status="mandatory"),
+    ]
+
+    result = get_relevant_terms("The rover is mobile.", entries, language="fr")
+
+    assert result == [GlossaryTerm(source="rover", target="véhicule mobile", notes="")]
+
+
+def test_get_relevant_terms_includes_notes_in_glossary_term():
+    entries = [
+        GlossaryEntry(
+            source="base station",
+            target="estación base",
+            language="es",
+            status="mandatory",
+            notes="GNSS/RTK context",
+        )
+    ]
+
+    result = get_relevant_terms("base station", entries)
+
+    assert result[0].notes == "GNSS/RTK context"
+
+
+def test_get_relevant_terms_returns_empty_list_when_nothing_matches():
+    entries = [GlossaryEntry(source="rover", target="rover", language="es", status="mandatory")]
+
+    result = get_relevant_terms("This text mentions none of the terms.", entries)
+
+    assert result == []
