@@ -46,6 +46,11 @@
 **Per què:** el brief demana 3 crides DeepSeek independents per bloc (traductor / revisor tècnic / validador de terminologia, secció 9), cada una potencialment lenta. Fer-ho dins de PHP/WordPress té problemes reals: timeouts d'execució de PHP en hosting compartit, sense cues/retries robustos, i bloqueig del worker PHP mentre s'espera resposta de l'API. Una app externa permet SDK Python adequat, rate limiting, cues, tests i execució per cron sense dependre dels límits de l'hosting. El pont PHP és imprescindible igualment perquè vincular traduccions a WPML només és possible amb hooks interns que s'executen dins de WordPress (veure decisió "Estratègia d'accés a la base de dades").
 **Com aplicar-ho:** cap canvi a `ROADMAP.md`/`PLA-ACCIO.md` — ja descriuen aquesta separació (§0 del roadmap, FASE 1 vs. FASE 2-8 del pla d'acció); aquesta entrada només fa explícit el raonament perquè no calgui redescobrir-lo en una sessió futura.
 
+### 2026-07-23 — Accés a l'staging confirmat: FASE 0 desbloquejada
+**Decisió/fet:** l'usuari ha proporcionat accés a `staging.precision-gnss.com`, protegit amb HTTP Basic Auth. Accés verificat (HTTP 200, WordPress detectat amb Yoast SEO Premium). L'usuari indica que a continuació donarà també accés d'administrador de WordPress.
+**Per què:** desbloqueja la FASE 0 (auditoria) del `PLA-ACCIO.md`, aturada fins ara.
+**Com aplicar-ho:** credencials guardades **només** en `.env` local (mai versionat — confirmat amb `git check-ignore`). `.env.example` actualitzat amb l'estructura (`STAGING_URL`, `STAGING_BASIC_AUTH_USER`, `STAGING_BASIC_AUTH_PASSWORD`, `WP_USERNAME`, `WP_APPLICATION_PASSWORD`) sense cap valor real. **Recordatori de seguretat permanent:** cap credencial (contrasenyes, API keys, tokens) s'escriu mai a `MEMORIA.md`, `LOG.md`, `ROADMAP.md`, `PLA-ACCIO.md` ni cap altre fitxer versionat — només a `.env` local.
+
 ## Supòsits pendents de verificar (a la FASE 0 real)
 
 - Versió exacta de WPML instal·lada a l'staging/producció (s'assumeix 4.9.x; **no** 5.0 Beta) — pendent de confirmació directa contra el lloc.

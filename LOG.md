@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-07-23 — Accés a l'staging rebut, seguiment reactivat
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari ("ja podem continuar amb el projecte, torna a activar seguiment i commits").
+
+**Fets:**
+
+1. L'usuari va proporcionar credencials de Basic Auth per a `staging.precision-gnss.com`. Aclarit que no eren credencials SSH/MySQL/wp-admin sinó el gate de protecció HTTP davant de tot el lloc.
+2. Accés verificat amb una petició `GET` (HTTP 200, WordPress + Yoast SEO Premium detectat). Cap altra acció feta encara sobre l'staging.
+3. Credencials guardades **només** en `.env` local (confirmat gitignored amb `git check-ignore`). **Cap credencial s'ha escrit ni s'escriurà mai a cap fitxer versionat.**
+4. `.env.example` ampliat amb l'estructura necessària (`STAGING_URL`, `STAGING_BASIC_AUTH_USER/PASSWORD`, `WP_USERNAME`, `WP_APPLICATION_PASSWORD`) sense valors reals.
+5. `MEMORIA.md` actualitzada amb la decisió/fet i un recordatori de seguretat permanent sobre credencials.
+6. Pendent: l'usuari ha indicat que tot seguit donarà accés d'administrador de WordPress. Un cop rebut, es pot començar la FASE 0 real (auditoria) del `PLA-ACCIO.md`.
+
+**Resultat:** FASE 0 desbloquejada (accés bàsic confirmat). Seguiment de documentació i commits a git reactivats a partir d'ara (havien quedat en pausa explícita durant la tasca puntual d'ardusimple.com).
+
+**Següent pas:** rebre accés wp-admin, després començar `PLA-ACCIO.md` FASE 0 (versió WPML/Elementor, `DESCRIBE` de taules `icl_*`, inventari de contingut).
+
+---
+
 ## 2026-07-23 — Afegit cost en euros als dos PDFs
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari.
