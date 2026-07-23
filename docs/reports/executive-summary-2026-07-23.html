@@ -1,0 +1,465 @@
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page {
+    size: A4;
+    margin: 2.2cm 2cm 2.2cm 2cm;
+  }
+  body {
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 10.5pt;
+    color: #222222;
+    line-height: 1.5;
+  }
+  h1 {
+    font-size: 22pt;
+    color: #0B3D5C;
+    margin-bottom: 4pt;
+  }
+  h2 {
+    font-size: 15pt;
+    color: #0B3D5C;
+    border-bottom: 1.5pt solid #0B3D5C;
+    padding-bottom: 4pt;
+    margin-top: 22pt;
+    margin-bottom: 10pt;
+  }
+  h3 {
+    font-size: 12pt;
+    color: #12587F;
+    margin-top: 14pt;
+    margin-bottom: 6pt;
+  }
+  p {
+    margin-top: 0pt;
+    margin-bottom: 8pt;
+    text-align: justify;
+  }
+  .cover {
+    text-align: center;
+    padding-top: 130pt;
+  }
+  .cover h1 {
+    font-size: 28pt;
+    color: #0B3D5C;
+  }
+  .cover .subtitle {
+    font-size: 14pt;
+    color: #444444;
+    margin-top: 10pt;
+  }
+  .cover .meta {
+    margin-top: 200pt;
+    font-size: 10pt;
+    color: #666666;
+  }
+  .cover .badge {
+    display: inline-block;
+    margin-top: 24pt;
+    padding: 6pt 16pt;
+    background-color: #0B3D5C;
+    color: #ffffff;
+    font-size: 10pt;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12pt;
+    font-size: 9.5pt;
+  }
+  th {
+    background-color: #0B3D5C;
+    color: #ffffff;
+    padding: 6pt 8pt;
+    text-align: left;
+    font-size: 9.5pt;
+  }
+  td {
+    padding: 5pt 8pt;
+    border-bottom: 0.5pt solid #cccccc;
+    vertical-align: top;
+  }
+  tr.alt td {
+    background-color: #f2f6f8;
+  }
+  .callout {
+    background-color: #EEF5F9;
+    border-left: 3pt solid #0B3D5C;
+    padding: 8pt 12pt;
+    margin: 10pt 0pt;
+    font-size: 10pt;
+  }
+  .status-done {
+    color: #1a7a1a;
+    font-weight: bold;
+  }
+  .status-pending {
+    color: #a05a00;
+    font-weight: bold;
+  }
+  .status-blocked {
+    color: #a3a3a3;
+    font-weight: bold;
+  }
+  .diagram-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 6pt;
+    margin: 10pt 0pt 14pt 0pt;
+  }
+  .diagram-box {
+    border: 1pt solid #0B3D5C;
+    background-color: #EEF5F9;
+    padding: 8pt;
+    text-align: center;
+    font-size: 9pt;
+    color: #0B3D5C;
+  }
+  .diagram-box.accent {
+    background-color: #0B3D5C;
+    color: #ffffff;
+  }
+  .diagram-arrow {
+    text-align: center;
+    font-size: 14pt;
+    color: #0B3D5C;
+    vertical-align: middle;
+  }
+  .small-note {
+    font-size: 8.5pt;
+    color: #666666;
+  }
+  .footer-note {
+    font-size: 8pt;
+    color: #999999;
+    text-align: center;
+    margin-top: 24pt;
+    border-top: 0.5pt solid #dddddd;
+    padding-top: 6pt;
+  }
+  ul {
+    margin-top: 4pt;
+    margin-bottom: 8pt;
+  }
+  li {
+    margin-bottom: 3pt;
+  }
+  code {
+    font-family: Courier, monospace;
+    font-size: 9pt;
+    background-color: #f2f2f2;
+    padding: 1pt 3pt;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= COVER PAGE ================= -->
+<div class="cover">
+  <h1>GNSS AI Translation Engine</h1>
+  <div class="subtitle">Executive Summary &amp; Technical Overview</div>
+  <div class="subtitle">Precision-GNSS.com — English → Spanish Automated Technical Translation</div>
+  <div class="badge">Status: FASE 4 &amp; 5 complete · FASE 0-3, 6-10 pending staging access</div>
+  <div class="meta">
+    Prepared 2026-07-23<br/>
+    Confidential — internal project document<br/>
+    Repository: AI-WP-translation
+  </div>
+</div>
+
+<div style="page-break-before: always;"></div>
+
+<!-- ================= EXECUTIVE SUMMARY ================= -->
+<h2>1. Executive Summary</h2>
+<p>
+The GNSS AI Translation Engine is a purpose-built software system that automatically translates the
+technical content of Precision-GNSS.com from English into European Spanish, with an architecture
+prepared to extend to French, German, Italian and Portuguese. Unlike a generic machine-translation
+plug-in, it is designed specifically for technical GNSS/RTK/surveying content, where a mistranslated
+number, unit, or qualifier can change the factual meaning of a claim.
+</p>
+<p>
+The system does not translate blindly. Every piece of content passes through three independent,
+specialised AI calls — a <b>Translator</b>, a <b>Technical Reviewer</b>, and a <b>Terminology Validator</b> —
+plus a deterministic local check against a curated domain glossary, before a translation is considered
+safe for human review. This report summarises what has been built, how it works, what technology it
+uses, and what it costs to run against real DeepSeek pricing, validated with real API calls and real
+content scraped from the live site.
+</p>
+<div class="callout">
+<b>Current state:</b> the core translation engine (extraction-agnostic: Translator, Reviewer, Terminology
+Validator, Glossary Engine, long-content chunking) is fully implemented, covered by 60 automated tests,
+and has been validated against the real DeepSeek API on real precision-gnss.com content. The WordPress/WPML
+integration layer is designed and documented but not yet implemented, pending access to a staging copy of
+the site.
+</div>
+
+<!-- ================= WHAT IT DOES ================= -->
+<h2>2. What the Tool Does</h2>
+<p>
+The engine sits between WordPress (running WPML and Elementor) and the DeepSeek AI API, acting as an
+independent, auditable layer — never a simple script that dumps text into an AI model and republishes
+whatever comes back. Its responsibilities are:
+</p>
+<ul>
+  <li><b>Extract</b> translatable content from WordPress pages while explicitly protecting URLs, email
+  addresses, SKUs, model numbers, shortcodes, and API keys from being altered.</li>
+  <li><b>Translate</b> that content with strict technical-fidelity rules — preserving exact meaning,
+  numbers, units, conditions, warnings, and degree of certainty.</li>
+  <li><b>Review</b> every translation independently for semantic drift: information added, removed, or
+  altered compared to the source.</li>
+  <li><b>Validate terminology</b> against a mandatory domain glossary (GNSS, RTK, PPK, surveying,
+  geodesy terms), both via a second AI call and a free, deterministic local check.</li>
+  <li><b>Score and gate</b> every translation before it is ever published — translations are created as
+  drafts pending human approval, never auto-published.</li>
+  <li><b>Track and reuse</b> translations via a translation memory, so only content that actually changed
+  gets re-translated.</li>
+</ul>
+
+<!-- ================= TECH STACK ================= -->
+<h2>3. Technology Stack</h2>
+<table>
+<tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
+<tr><td>Translation engine</td><td>Python 3.10</td><td>Core service/CLI, independent of WordPress</td></tr>
+<tr class="alt"><td>AI provider</td><td>DeepSeek API (<code>deepseek-v4-pro</code> / <code>deepseek-v4-flash</code>)</td>
+<td>OpenAI-compatible chat completions, JSON mode for structured output</td></tr>
+<tr><td>AI client SDK</td><td><code>openai</code> Python SDK</td><td>Talks to DeepSeek via a custom <code>base_url</code></td></tr>
+<tr class="alt"><td>Data validation</td><td>Pydantic v2</td><td>Strict schemas for every AI response (translation,
+review, terminology audit)</td></tr>
+<tr><td>Testing</td><td>pytest, unittest.mock</td><td>60 automated tests, no live API calls in CI</td></tr>
+<tr class="alt"><td>Configuration</td><td>python-dotenv</td><td>Environment-based config, API keys never
+committed to source control</td></tr>
+<tr><td>CMS integration (designed)</td><td>WordPress REST API + Application Passwords</td>
+<td>Standard content read/write, authenticated per request</td></tr>
+<tr class="alt"><td>Multilingual layer (designed)</td><td>WPML (Multilingual CMS plan) + a custom lightweight
+mu-plugin (<code>gnss-bridge</code>)</td><td>WPML's translation-linking hooks are PHP-only; the mu-plugin
+exposes them safely over REST</td></tr>
+<tr><td>Persistence (designed)</td><td>SQLite</td><td>Translation memory: source hash, translation, model,
+prompt version, QA score</td></tr>
+</table>
+
+<!-- ================= ARCHITECTURE ================= -->
+<h2>4. Architecture</h2>
+<p>
+The system deliberately keeps three concerns apart: WordPress never talks to DeepSeek directly, and
+DeepSeek never has any awareness of WordPress. A thin, well-defined engine sits in between and owns all
+the intelligence — extraction rules, glossary logic, quality gates, and audit logging.
+</p>
+
+<table class="diagram-table">
+<tr>
+  <td class="diagram-box" style="width:24%">
+    <b>WordPress</b><br/>Precision-GNSS.com<br/>WPML + Elementor + Yoast
+  </td>
+  <td class="diagram-arrow" style="width:6%">&#8594;</td>
+  <td class="diagram-box" style="width:24%">
+    <b>gnss-bridge</b><br/>lightweight mu-plugin<br/>(designed, not yet deployed)
+  </td>
+  <td class="diagram-arrow" style="width:6%">&#8594;</td>
+  <td class="diagram-box accent" style="width:24%">
+    <b>Translation Engine</b><br/>Python service/CLI<br/>(implemented)
+  </td>
+  <td class="diagram-arrow" style="width:6%">&#8594;</td>
+  <td class="diagram-box" style="width:10%">
+    <b>DeepSeek<br/>API</b>
+  </td>
+</tr>
+</table>
+
+<p class="small-note">
+The <code>gnss-bridge</code> component exists because WPML does not expose a public REST API for creating
+or linking translations — that operation is only supported through internal PHP hooks
+(<code>wpml_set_element_language_details</code> and related filters) that must run inside WordPress itself.
+A minimal, auditable bridge plugin is the safest way to reach those hooks from an external Python service,
+without ever writing directly to WPML's database tables — which WPML's own documentation explicitly
+advises against.
+</p>
+
+<!-- ================= CORE LOGIC ================= -->
+<h2>5. Core Logic: the Translation Pipeline</h2>
+<p>
+Translation and quality assurance are deliberately split into independent AI calls rather than one
+combined request. This is not a stylistic choice — it directly reflects a validated real-world finding:
+during testing, the Translator alone produced a subtle but real technical error (translating
+<i>"achieves a fix within 5 seconds"</i> — i.e. in at most 5 seconds — as <i>"en menos de 5 segundos"</i>,
+i.e. in strictly less than 5 seconds). The independent Reviewer call caught this exact error and correctly
+failed the translation. A single combined call would very likely have missed it.
+</p>
+
+<table class="diagram-table">
+<tr>
+  <td class="diagram-box accent" style="width:19%">Source Text<br/>+ Context</td>
+  <td class="diagram-arrow" style="width:5%">&#8594;</td>
+  <td class="diagram-box" style="width:19%"><b>1. Translator</b><br/>DeepSeek call<br/>+ glossary subset</td>
+  <td class="diagram-arrow" style="width:5%">&#8594;</td>
+  <td class="diagram-box" style="width:19%"><b>2. Technical<br/>Reviewer</b><br/>compares source<br/>vs. translation</td>
+  <td class="diagram-arrow" style="width:5%">&#8594;</td>
+  <td class="diagram-box" style="width:19%"><b>3. Terminology<br/>Validator</b><br/>audits mandatory<br/>glossary terms</td>
+</tr>
+</table>
+<table class="diagram-table">
+<tr>
+  <td class="diagram-box" style="width:33%">PASS &#8594; approved,<br/>drafted in WordPress</td>
+  <td class="diagram-box" style="width:33%">FAIL &#8594; flagged for<br/>human review</td>
+  <td class="diagram-box" style="width:34%">Never auto-published<br/>(<code>AUTO_PUBLISH=false</code>)</td>
+</tr>
+</table>
+
+<h3>5.1 Translator</h3>
+<p>
+A single DeepSeek call, constrained by a strict system prompt with 15 mandatory rules (preserve exact
+meaning, numbers, units, conditions, warnings, certainty; never simplify, invent, or drop technical
+information) and 6 explicit prohibitions (never soften or strengthen claims, never translate protected
+product names or acronyms without instruction). The model is forced into JSON mode and must return a
+structured object: translation text, a 0-1 confidence score, a list of flagged issues, and the glossary
+terms it actually used.
+</p>
+
+<h3>5.2 Technical Reviewer</h3>
+<p>
+A second, independent DeepSeek call that receives both the source and the translation and checks
+specifically for information added, removed, or altered; changed conditions, certainty, or terminology.
+Returns a strict pass/fail plus a list of issues — this is the call that caught the "within 5 seconds"
+error described above.
+</p>
+
+<h3>5.3 Terminology Validator</h3>
+<p>
+A third, independent DeepSeek call auditing the translation against the mandatory glossary terms
+relevant to that content, flagging any deviation from the required target term.
+</p>
+
+<h3>5.4 Glossary Engine</h3>
+<p>
+Domain terminology (GNSS, RTK, PPK, surveying, geodesy) is stored in JSON files and only the subset of
+terms actually present in the current text is sent to DeepSeek on each call — never the whole glossary —
+keeping prompts small and costs down. A free, local, deterministic check (<code>validate_translation()</code>)
+also flags obviously missing mandatory terms without spending any API budget.
+</p>
+
+<h3>5.5 Chunking</h3>
+<p>
+Long content (a full article, a long product page) is split at paragraph boundaries — falling back to
+sentence boundaries only for a single oversized paragraph — so numbers, units, and technical terms are
+never cut mid-word. Each chunk is translated with the same shared context and glossary, then rejoined.
+</p>
+
+<!-- ================= FUNCTIONALITY STATUS ================= -->
+<h2>6. Implemented Functionality</h2>
+<table>
+<tr><th>Phase</th><th>Scope</th><th>Status</th></tr>
+<tr><td>FASE 0</td><td>WordPress/WPML environment audit</td><td class="status-blocked">Blocked — needs staging access</td></tr>
+<tr class="alt"><td>FASE 1</td><td><code>gnss-bridge</code> mu-plugin (WPML hooks bridge)</td><td class="status-blocked">Designed, not deployed</td></tr>
+<tr><td>FASE 2</td><td>WordPress connector (Python)</td><td class="status-blocked">Blocked — needs staging access</td></tr>
+<tr class="alt"><td>FASE 3</td><td>Content extraction (Elementor/Yoast)</td><td class="status-blocked">Blocked — needs staging access</td></tr>
+<tr><td>FASE 4</td><td>Translation Engine: Translator, Reviewer, Terminology<br/>Validator, chunking</td><td class="status-done">Complete — 60 tests, validated with real API</td></tr>
+<tr class="alt"><td>FASE 5</td><td>Glossary Engine</td><td class="status-done">Complete — seed glossary (10 terms), pending real-content expansion</td></tr>
+<tr><td>FASE 6</td><td>Translation Memory (SQLite) &amp; change detection</td><td class="status-pending">Not started</td></tr>
+<tr class="alt"><td>FASE 7</td><td>QA Engine: numeric/unit/URL checks, scoring system</td><td class="status-pending">Not started</td></tr>
+<tr><td>FASE 8</td><td>WPML orchestration (end-to-end pipeline)</td><td class="status-blocked">Blocked — needs staging access</td></tr>
+<tr class="alt"><td>FASE 9</td><td>Pilot on 5 real pages</td><td class="status-blocked">Blocked — needs staging access</td></tr>
+<tr><td>FASE 10</td><td>Scale-out &amp; scheduled sync</td><td class="status-pending">Not started</td></tr>
+</table>
+<p class="small-note">
+Full detail, task-level breakdown and rationale for each phase is tracked in <code>ROADMAP.md</code> and
+<code>PLA-ACCIO.md</code> in the project repository, with a running session log in <code>LOG.md</code>.
+</p>
+
+<div style="page-break-before: always;"></div>
+
+<!-- ================= COST ANALYSIS ================= -->
+<h2>7. Cost Analysis — DeepSeek API</h2>
+
+<h3>7.1 DeepSeek pricing (as of 2026-07-23)</h3>
+<table>
+<tr><th>Model</th><th>Input (cache miss)</th><th>Input (cache hit)</th><th>Output</th><th>Used for</th></tr>
+<tr><td><code>deepseek-v4-pro</code></td><td>$0.435 / 1M tokens</td><td>$0.003625 / 1M tokens</td>
+<td>$0.87 / 1M tokens</td><td>Translation (default)</td></tr>
+<tr class="alt"><td><code>deepseek-v4-flash</code></td><td>$0.14 / 1M tokens</td><td>$0.0028 / 1M tokens</td>
+<td>$0.28 / 1M tokens</td><td>Optional cheaper QA model</td></tr>
+</table>
+<p class="small-note">Source: api-docs.deepseek.com/quick_start/pricing/. Both models are OpenAI-compatible
+and support JSON mode at no extra cost.</p>
+
+<h3>7.2 Methodology</h3>
+<p>
+Token counts are approximated at ~4 characters per token, a standard rule of thumb for English/Spanish
+BPE-style tokenizers. Rather than estimating on invented text, the actual system prompts produced by
+<code>app/translation/prompt_builder.py</code> were measured directly:
+</p>
+<table>
+<tr><th>System prompt</th><th>Measured size</th><th>Approx. tokens</th></tr>
+<tr><td>Translator (with 5-term glossary)</td><td>1,832 characters</td><td>~458 tokens</td></tr>
+<tr class="alt"><td>Technical Reviewer</td><td>832 characters</td><td>~208 tokens</td></tr>
+<tr><td>Terminology Validator (with glossary)</td><td>859 characters</td><td>~215 tokens</td></tr>
+</table>
+
+<h3>7.3 Empirical test — real precision-gnss.com pages</h3>
+<p>
+Four real, public pages were scraped from the live site and run through the actual
+<code>chunk_text()</code> splitter and the measured prompt sizes above to produce a real, code-grounded
+cost estimate — not a theoretical one.
+</p>
+<table>
+<tr><th>Page</th><th>Words</th><th>Characters</th><th>Chunks</th>
+<th>Translate only<br/>(v4-pro)</th><th>Full pipeline<br/>(v4-pro)</th><th>Full pipeline<br/>(pro + flash QA)</th></tr>
+<tr><td>Homepage</td><td>1,800</td><td>12,141</td><td>4</td><td>$0.00523</td><td>$0.01049</td><td>$0.00692</td></tr>
+<tr class="alt"><td>Archaeology (RTK application)</td><td>2,156</td><td>13,871</td><td>4</td><td>$0.00585</td><td>$0.01173</td><td>$0.00774</td></tr>
+<tr><td>Precision Agriculture (RTK application)</td><td>3,951</td><td>24,706</td><td>7</td><td>$0.01040</td><td>$0.02083</td><td>$0.01376</td></tr>
+<tr class="alt"><td>News: RTK/GNSS for Robotics</td><td>1,575</td><td>10,012</td><td>3</td><td>$0.00425</td><td>$0.00852</td><td>$0.00562</td></tr>
+<tr><td><b>Average</b></td><td><b>2,371</b></td><td><b>15,183</b></td><td><b>4.5</b></td>
+<td><b>$0.00643</b></td><td><b>$0.01289</b></td><td><b>$0.00851</b></td></tr>
+</table>
+<p class="small-note">
+"Full pipeline" includes all three calls (Translator + Reviewer + Terminology Validator). Cost per 1,000
+characters of source content was remarkably consistent across all four pages: <b>$0.00084–$0.00086</b>
+using the full quality-assured pipeline on <code>deepseek-v4-pro</code>. Sample: <code>scripts/estimate_page_cost.py</code>
+in the repository reproduces these figures against any scraped page.
+</p>
+
+<div class="callout">
+<b>Practical reading:</b> translating a typical Precision-GNSS.com content page (~2,400 words) costs
+roughly <b>$0.006</b> for translation alone, or <b>$0.013</b> with full independent quality review —
+well under one cent per page either way. Using the cheaper <code>deepseek-v4-flash</code> model for the
+two QA calls (keeping <code>deepseek-v4-pro</code> for translation itself) cuts the full-pipeline cost by
+about a third, to roughly <b>$0.0085</b> per page, with no loss of translation quality since only the
+review layer changes model.
+</div>
+
+<h3>7.4 Site-wide projection (illustrative)</h3>
+<p>
+The homepage alone links to at least 13 distinct RTK application pages and several news/quick-start
+articles — the real total page count for the site has not yet been established (that requires the FASE 0
+audit, currently blocked on staging access). For reference, at illustrative page counts using the
+measured full-pipeline average of $0.0129/page:
+</p>
+<table>
+<tr><th>Illustrative page count</th><th>Translate only</th><th>Full QA pipeline (pro)</th><th>Full QA pipeline (pro+flash)</th></tr>
+<tr><td>25 pages</td><td>$0.16</td><td>$0.32</td><td>$0.21</td></tr>
+<tr class="alt"><td>50 pages</td><td>$0.32</td><td>$0.64</td><td>$0.43</td></tr>
+<tr><td>100 pages</td><td>$0.64</td><td>$1.29</td><td>$0.85</td></tr>
+</table>
+<p class="small-note">
+These totals are for a full initial translation pass. Ongoing costs after launch will be far lower,
+since the translation memory (FASE 6) only re-translates content blocks that actually changed.
+</p>
+
+<!-- ================= NEXT STEPS ================= -->
+<h2>8. Current Status &amp; Next Steps</h2>
+<ul>
+  <li><b>Done:</b> Translation Engine core (FASE 4) and Glossary Engine (FASE 5) — implemented,
+  tested (60 automated tests), and validated against the live DeepSeek API and real site content.</li>
+  <li><b>Blocked:</b> WordPress/WPML integration (FASES 0-3, 8-9) — requires access to a staging copy
+  of Precision-GNSS.com, which has been requested and is pending.</li>
+  <li><b>Available now:</b> the <code>gnss-bridge</code> mu-plugin skeleton (FASE 1) can be written and
+  reviewed without deployment; QA Engine (FASE 7: numeric, unit, URL, and terminology checks) and
+  Translation Memory (FASE 6) can also proceed independently of staging access.</li>
+</ul>
+
+<div class="footer-note">
+GNSS AI Translation Engine — Executive Summary — Prepared 2026-07-23 — Internal project document
+</div>
+
+</body>
+</html>

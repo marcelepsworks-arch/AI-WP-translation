@@ -3,3 +3,7 @@ pydantic>=2.7.0
 python-dotenv>=1.0.0
 pytest>=8.0.0
 pytest-mock>=3.14.0
+
+# Used only by scripts/estimate_page_cost.py and one-off report generation
+xhtml2pdf>=0.2.16
+pypdf>=4.0.0
