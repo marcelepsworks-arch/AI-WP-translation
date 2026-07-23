@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-07-23 — Redisseny dels PDFs (nivell "Apple") + exemple de cost treballat
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari ("la maquetació és horrible, vull un nivell Apple").
+
+**Fets:**
+
+1. Motor de renderització canviat: `xhtml2pdf` (CSS molt limitat, resultat "horrible" segons l'usuari) → Chromium real via Playwright MCP (`page.pdf()`), amb suport CSS complet (flexbox, gradients, ombres, border-radius).
+2. Redisseny complet dels dos documents: paleta minimal (blanc, gris clar, un sol accent blau), molt espai en blanc, targetes d'estadístiques, diagrames de flux amb caixes arrodonides i fletxes, taules netes sense capçaleres pesades.
+3. Afegida secció d'introducció en **llenguatge planer/genèric** (sense argot tècnic) explicant què fa l'eina, tal com va demanar l'usuari.
+4. Verificació visual iterativa: captures de pantalla de cada pàgina abans d'exportar el PDF final (via `browser_run_code_unsafe` + `page.screenshot()`), per confirmar el disseny abans de donar-lo per bo.
+5. L'usuari va demanar afegir un exemple de cost concret (pàgina "Precision Agriculture", 14.240 caràcters segons el seu càlcul). **Discrepància detectada i comunicada a l'usuari:** el recompte real de la pàgina (mesurat amb el mateix mètode que la resta del document) és 24.706 caràcters, no 14.240. S'ha fet servir la xifra verificada per mantenir el document internament consistent amb la taula ja publicada.
+6. `requirements.txt`: eliminat `xhtml2pdf` (ja no s'usa), mantingut `pypdf` (verificació de pàgines).
+
+**Resultat:** dos PDFs professionals, en anglès, guardats a l'arrel: `GNSS-AI-Translation-Engine-Executive-Summary.pdf` (7 pàgines) i `-Short.pdf` (1 pàgina). Fonts HTML actualitzades a `docs/reports/`.
+
+**Següent pas:** el mateix que abans — esperar accés a l'staging, o avançar en FASE 6/7 si es prefereix.
+
+---
+
 ## 2026-07-23 — Resum executiu PDF amb anàlisi de costos empírica
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari.
