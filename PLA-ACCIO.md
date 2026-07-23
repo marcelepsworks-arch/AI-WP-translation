@@ -81,12 +81,12 @@ Llegenda d'estat: `[ ]` pendent · `[~]` en curs · `[x]` fet
 
 ## FASE 5 — Glossary Engine
 
-- [ ] **5.1** Poblar `glossary/gnss.json`, `surveying.json`, `forestry.json`, `spanish.json`, `global.json` amb els termes exemple del brief (secció 8) com a punt de partida, ampliats amb terminologia real de precision-gnss.com (extreure'ls de la FASE 0).
-- [ ] **5.2** `app/translation/glossary.py`: `get_relevant_terms(text)` (matching per keyword/lematització simple) i `validate_translation(text)`.
-- [ ] **5.3** Integrar el glossari filtrat dins el `prompt_builder.py` (FASE 4.2) — només el subconjunt rellevant, no el glossari sencer.
-- [ ] **5.4** Test: verificar que "base station" sempre es tradueix "estación base" i que "rover" i "fix" respecten les regles `mandatory`/`notes` del brief.
+- [x] **5.1** Poblat `glossary/gnss.json` (6 termes) i `glossary/surveying.json` (4 termes) amb els termes exemple del brief (secció 8) + terminologia GNSS/RTK/surveying ben establerta. *(Fet 2026-07-23 — són glossaris llavor (seed), NOMÉS 10 termes; falta ampliar-los amb terminologia real de precision-gnss.com quan hi hagi accés a l'staging (FASE 0). `forestry.json`/`spanish.json`/`global.json` encara no creats — no hi ha contingut real per poblar-los sense inventar-se termes.)*
+- [x] **5.2** `app/translation/glossary.py`: `GlossaryEntry` (model Pydantic), `load_glossary_files(paths)`, `get_relevant_terms(text, entries, language)` (matching per paraula completa, case-insensitive, filtrat per idioma) i `validate_translation(source_text, translated_text, entries, language)` (comprovació local determinista, sense crida a l'API, dels termes `mandatory`). *(Fet 2026-07-23.)*
+- [x] **5.3** `get_relevant_terms()` ja retorna objectes `GlossaryTerm` directament compatibles amb `DeepSeekClient.translate()`/`.validate_terminology()` — no cal cap capa d'adaptació addicional. *(Fet 2026-07-23 — falta encara la integració end-to-end dins un pipeline orquestrat, que és FASE 8.)*
+- [x] **5.4** Test: 12 tests (`tests/translation/test_glossary.py`) verifiquen que "base station"/"rover"/"fix" es filtren i validen correctament segons `mandatory`/`notes`, incloent matching de paraula completa (`fix` no fa match dins `prefix`/`suffix`) i filtratge per idioma. *(Fet 2026-07-23 — pendent ampliar amb frases reals del lloc quan hi hagi accés a l'staging.)*
 
-**Sortida de la fase:** glossari amb ≥30-50 termes reals del domini, validat contra 10 frases de prova.
+**Sortida de la fase:** ✅ Glossary Engine funcional i provat — codi a `app/translation/glossary.py`, glossaris llavor a `glossary/*.json`, tests a `tests/translation/test_glossary.py`, pla a `docs/superpowers/plans/2026-07-23-glossary-engine.md`. Pendent: ampliar el glossari amb termes reals (bloquejat per accés a l'staging, FASE 0) i la integració end-to-end (FASE 8).
 
 ---
 

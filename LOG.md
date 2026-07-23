@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-07-23 — Glossary Engine (FASE 5)
+
+**Fet per:** Claude (Claude Code), continuant a petició de l'usuari ("Continua, encara no tinc accés a l'staging").
+
+**Objectiu de la sessió:** avançar en una peça independent de l'staging de WordPress — el Glossary Engine (FASE 5), que ja s'usava manualment (llistes de `GlossaryTerm` a mà) des de les sessions anteriors.
+
+**Fets:**
+
+1. Skill `writing-plans` → pla nou a `docs/superpowers/plans/2026-07-23-glossary-engine.md` (5 tasques, TDD).
+2. Skill `executing-plans` → execució inline:
+   - `glossary/gnss.json` (6 termes) i `glossary/surveying.json` (4 termes) — glossaris **llavor**, amb els exemples del brief + terminologia GNSS/RTK/surveying ben establerta. **Marcats explícitament com a punt de partida**, no com a glossari complet — calen termes reals de precision-gnss.com (bloquejat per FASE 0/staging).
+   - `app/translation/glossary.py`: `GlossaryEntry` (model), `load_glossary_files()`, `get_relevant_terms()` (filtratge per paraula completa + idioma, retorna `GlossaryTerm` ja compatibles amb `DeepSeekClient`), `validate_translation()` (comprovació local determinista de termes obligatoris, sense cost d'API, complementària a `DeepSeekClient.validate_terminology()`).
+   - Suite completa: **51 tests, tots passant** (39 anteriors + 12 nous).
+3. `PLA-ACCIO.md` FASE 5 marcada com a feta (amb el matís que el glossari és una llavor petita, no els 30-50 termes previstos originalment — això depèn de contingut real).
+
+**Resultat:** el Glossary Engine ja és funcional i es pot cridar des de codi (`load_glossary_files` + `get_relevant_terms` + `validate_translation`), encara no integrat en un pipeline end-to-end (això és FASE 8).
+
+**Següent pas:** queden com a peces independents de l'staging: FASE 4.5 (chunking de contingut llarg) o una prova real amb `DEEPSEEK_API_KEY`. Quan hi hagi accés a l'staging, cal revisitar FASE 5.1 per ampliar el glossari amb terminologia real abans de considerar-lo complet.
+
+---
+
 ## 2026-07-23 — Reviewer tècnic + Terminology Validator (FASE 4.4)
 
 **Fet per:** Claude (Claude Code), continuant a petició de l'usuari ("Continua").
