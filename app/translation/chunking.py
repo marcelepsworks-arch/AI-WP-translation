@@ -5,6 +5,11 @@ preserving paragraph and sentence boundaries so technical content
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.translation.deepseek_client import DeepSeekClient
+    from app.translation.prompt_builder import GlossaryTerm
 
 
 def chunk_text(text: str, max_chars: int = 4000) -> list[str]:
@@ -56,3 +61,24 @@ def _split_by_sentences(paragraph: str, max_chars: int) -> list[str]:
         chunks.append(" ".join(current))
 
     return chunks
+
+
+def translate_long_text(
+    client: "DeepSeekClient",
+    text: str,
+    target_language_name: str,
+    context: str = "",
+    glossary_terms: "list[GlossaryTerm] | None" = None,
+    max_chars: int = 4000,
+) -> str:
+    chunks = chunk_text(text, max_chars)
+    translated_chunks = [
+        client.translate(
+            chunk,
+            target_language_name=target_language_name,
+            context=context,
+            glossary_terms=glossary_terms,
+        ).translation
+        for chunk in chunks
+    ]
+    return "\n\n".join(translated_chunks)
