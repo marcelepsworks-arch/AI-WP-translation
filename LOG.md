@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-07-23 — Resum executiu PDF amb anàlisi de costos empírica
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari.
+
+**Objectiu de la sessió:** produir un document professional (PDF, anglès) per a l'usuari amb resum executiu del projecte: què fa l'eina, tecnologies, lògica, funcionalitats implementades, i una anàlisi de costos de DeepSeek amb xifres reals.
+
+**Fets:**
+
+1. Prova empírica a petició de l'usuari: `browser-harness` no funciona en aquest entorn Windows (error `AF_UNIX` no suportat) — reportat com a limitació d'entorn, no solucionat (fora d'abast). Fallback a l'skill `firecrawl-scrape`, que sí ha funcionat.
+2. Scraping de 4 pàgines reals de precision-gnss.com (homepage, `/rtk-application/archaeology/` — la mateixa que usa el brief original com a exemple —, `/rtk-application/precision-agriculture/`, i un article de notícies) guardades a `.firecrawl/` (afegit a `.gitignore`, no versionat).
+3. `scripts/estimate_page_cost.py`: script d'anàlisi que fa servir el `chunk_text()` real i les mides reals dels system prompts (`app/translation/prompt_builder.py`) per calcular costos de DeepSeek amb dades reals, no inventades. Preus de DeepSeek verificats a `api-docs.deepseek.com/quick_start/pricing/` (v4-pro: $0.435/$0.87 per 1M tokens input/output; v4-flash: $0.14/$0.28).
+4. **Resultat empíric clau:** cost molt consistent d'entre $0.00084-$0.00086 per 1.000 caràcters amb el pipeline complet (Translator+Reviewer+Validator) sobre `deepseek-v4-pro`, en les 4 pàgines reals provades. Una pàgina típica (~2.400 paraules) costa ~$0.006 (només traducció) a ~$0.013 (amb QA complet).
+5. Document `GNSS-AI-Translation-Engine-Executive-Summary.pdf` (10 pàgines, anglès) generat amb `xhtml2pdf` (WeasyPrint no és viable en aquest Windows sense GTK) i guardat a l'arrel del projecte. Font HTML conservada a `docs/reports/executive-summary-2026-07-23.html` per poder-lo regenerar/editar.
+6. Verificat que el PDF commitejat és idèntic byte a byte al fitxer local (l'avís de conversió CRLF de git no l'ha corromput); afegit `.gitattributes` per marcar els `*.pdf` com a binaris de cara al futur.
+
+**Resultat:** document professional lliurat, amb dades de cost reals i verificables (reproduïbles amb `scripts/estimate_page_cost.py`), no estimacions inventades.
+
+**Següent pas:** el mateix que abans — esperar accés a l'staging per continuar amb FASES 0-3/6-9, o avançar en peces independents (QA Engine FASE 7, Translation Memory FASE 6) si es prefereix.
+
+---
+
 ## 2026-07-23 — Chunking de contingut llarg (FASE 4.5) → FASE 4 completa
 
 **Fet per:** Claude (Claude Code), continuant a petició de l'usuari ("Continua per on tingui més lògica").
