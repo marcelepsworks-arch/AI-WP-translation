@@ -8,21 +8,15 @@ Llegenda d'estat: `[ ]` pendent · `[~]` en curs · `[x]` fet
 
 ## FASE 0 — Auditoria i validació d'entorn
 
-- [ ] **0.0** Confirmar amb el client/equip d'hosting que l'**staging** és una còpia fidel i actualitzada de producció (mateixes versions de WordPress, WPML, Elementor i plugins actius) — si no ho és, sol·licitar que es regeneri abans de continuar.
-- [ ] **0.1** Confirmar credencials i accessos necessaris abans de tocar res (**tots contra l'staging, no producció**):
-  - Application Password de WordPress (usuari `translation_bot`, rol Editor) a l'staging.
-  - Credencials MySQL **només lectura** de l'staging (per auditoria; verificar amb el proveïdor d'hosting que es pot crear un usuari read-only).
-  - `DEEPSEEK_API_KEY` de prova amb quota limitada.
-  - *Verificació:* poder fer `curl -u user:app_password https://staging.precision-gnss.com/wp-json/wp/v2/posts?per_page=1` amb resposta 200 (substituir per la URL real de l'staging).
-- [ ] **0.2** Confirmar versió exacta de WPML instal·lada a l'staging i el pla actiu (CMS/Agency) des de `wp-admin → WPML → Support` o `wp plugin list` si hi ha accés WP-CLI.
-  - *Verificació:* anotar número de versió (esperat: 4.9.x segons `BIBLIOGRAFIA.md` §1) i comprovar que **no** és la 5.0 Beta.
-- [ ] **0.3** Confirmar versió d'Elementor (Free/Pro) i llistar plugins actius que puguin registrar contingut traduïble (ACF, formularis, popups). Confirmar que no hi ha WooCommerce ni cap plugin de botiga actiu (ja confirmat pel client, però verificar-ho a l'staging real).
-- [ ] **0.4** Amb l'accés MySQL read-only, fer `DESCRIBE` de totes les taules `icl_*` reals i comparar amb la taula de `BIBLIOGRAFIA.md` §1. Documentar qualsevol diferència a `AUDITORIA-INICIAL.md`.
-- [ ] **0.5** Generar l'inventari de contingut traduïble en format JSON tal com mostra el brief secció 4, **prioritzant posts/pages/CPTs/Elementor/Yoast** (el contingut editorial). Registrar l'existència de strings de tema/plugins com a referència, però marcar-les explícitament com a **fora d'abast** del primer lliurament.
-- [ ] **0.6** Seleccionar les 5-10 pàgines de prova (has d'incloure com a mínim: 1 simple, 1 Elementor complexa, 1 article, 1 amb taula/bloc especial, 1 amb molts enllaços interns).
-  - *Verificació:* llista d'URLs concretes documentada a `AUDITORIA-INICIAL.md`.
+- [x] **0.0** Còpia fidel de producció: **parcialment confirmat**. El contingut (pages/posts) coincideix amb producció, però **la configuració de plugins NO coincideix amb el que teníem assumit** — veure 0.2. *(Fet 2026-07-23.)*
+- [x] **0.1** Credencials i accessos: Basic Auth de l'staging ✅ i sessió d'administrador WordPress ✅, ambdues verificades i funcionals (guardades només a `.env` local). **Pendent:** Application Password dedicada (usuari `translation_bot`), credencials MySQL read-only, `DEEPSEEK_API_KEY` permanent. *(Fet parcialment 2026-07-23.)*
+- [x] **0.2** 🛑 **WPML no està instal·lat a l'staging** (ni actiu, ni inactiu, ni com a mu-plugin, ni als namespaces de la REST API). Contradiu el supòsit previ. Detall complet i decisió a `AUDITORIA-INICIAL.md` §0.2. *(Fet/troballa crítica 2026-07-23.)*
+- [x] **0.3** Elementor **Pro** 4.1.5 (plugin) + 4.0.4 (Elementor Pro) confirmat. Yoast SEO 28.0 + Premium 27.1. Sense WooCommerce, sense ACF. Fluent Forms instal·lat però inactiu. *(Fet 2026-07-23.)*
+- [ ] **0.4** `DESCRIBE` de taules `icl_*`: **bloquejat** — com que WPML no està instal·lat, aquestes taules encara no existeixen a la BD. A més, encara no tenim credencials MySQL. Pendent fins instal·lar WPML.
+- [x] **0.5** Inventari de contingut generat via REST API: **24 pages + 17 posts**, sense custom post types propis (només interns d'Elementor/FluentCRM). Llista completa a `AUDITORIA-INICIAL.md` §0.5. Confirmat empíricament que Yoast/`_elementor_data` no s'exposen per defecte via REST — calen `register_post_meta()` al mu-plugin, tal com ja preveia `BIBLIOGRAFIA.md` §6. *(Fet 2026-07-23.)*
+- [x] **0.6** Selecció provisional de pàgines de prova feta (`AUDITORIA-INICIAL.md` §0.6) — a confirmar visualment en arribar a la FASE 9. *(Fet 2026-07-23.)*
 
-**Sortida de la fase:** `AUDITORIA-INICIAL.md` amb inventari real + confirmació que els supòsits del `ROADMAP.md` són vàlids (o llista de desviacions a incorporar-hi).
+**Sortida de la fase:** ✅ `AUDITORIA-INICIAL.md` creat amb l'inventari real. **Desviació important respecte al `ROADMAP.md`: WPML no instal·lat** — bloqueja FASE 1/8 i la part de 0.4, però la resta de FASE 0 està completa.
 
 ---
 

@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-07-23 — FASE 0: primera auditoria real de l'staging (WPML no instal·lat)
+
+**Fet per:** Claude (Claude Code), amb accés d'administrador de WordPress proporcionat per l'usuari.
+
+**Fets:**
+
+1. Login real a `staging.precision-gnss.com/login_secure/` via automatització de navegador (Playwright), confirmat (Dashboard carregat correctament).
+2. Auditoria de plugins (`wp-admin/plugins.php` + REST API `wp-json` namespaces): 22 plugins, 3 mu-plugins.
+3. 🛑 **Troballa crítica: WPML no està instal·lat enlloc** (ni actiu, ni inactiu, ni mu-plugin, ni namespace REST `wpml/*`). Contradiu el supòsit de `MEMORIA.md`. Comunicat a l'usuari immediatament amb `AskUserQuestion`.
+4. Decisió de l'usuari: continuar amb el que no depengui de WPML mentre no s'instal·la.
+5. Inventari de contingut via REST API: 24 pages + 17 posts + 390 media, sense custom post types propis. Confirmat empíricament (no només per documentació) que els camps Yoast i `_elementor_data` no estan exposats per defecte a la REST API — validant la troballa de `BIBLIOGRAFIA.md` §6.
+6. Creat `AUDITORIA-INICIAL.md` amb tots els resultats. `PLA-ACCIO.md` FASE 0 actualitzada (0.0, 0.1, 0.2, 0.3, 0.5, 0.6 fets; 0.4 bloquejat per manca de WPML i credencials MySQL).
+
+**Resultat:** FASE 0 gairebé completa. Desviació importat respecte al pla original: WPML no hi és, cosa que bloqueja FASE 1 (`gnss-bridge`) i FASE 8 (orquestració WPML) fins que s'instal·li.
+
+**Següent pas:** avançar en FASE 2 (WordPress Connector) per a les parts no-WPML (`get_post`, `get_pages`, `get_post_meta`) contra l'staging real, mentre s'espera la instal·lació de WPML.
+
+---
+
 ## 2026-07-23 — Accés a l'staging rebut, seguiment reactivat
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari ("ja podem continuar amb el projecte, torna a activar seguiment i commits").
