@@ -1,0 +1,89 @@
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 1.8cm 2cm 1.8cm 2cm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #222222; line-height: 1.4; }
+  h1 { font-size: 19pt; color: #0B3D5C; margin-bottom: 2pt; }
+  .subtitle { font-size: 11pt; color: #444444; margin-bottom: 4pt; }
+  .badge { display: inline-block; margin-top: 6pt; margin-bottom: 14pt; padding: 4pt 10pt;
+    background-color: #0B3D5C; color: #ffffff; font-size: 8.5pt; }
+  h2 { font-size: 11.5pt; color: #0B3D5C; border-bottom: 1pt solid #0B3D5C; padding-bottom: 2pt;
+    margin-top: 12pt; margin-bottom: 6pt; }
+  p { margin-top: 0pt; margin-bottom: 6pt; text-align: justify; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; font-size: 8.5pt; }
+  th { background-color: #0B3D5C; color: #ffffff; padding: 4pt 6pt; text-align: left; }
+  td { padding: 3pt 6pt; border-bottom: 0.5pt solid #cccccc; }
+  tr.alt td { background-color: #f2f6f8; }
+  ul { margin-top: 2pt; margin-bottom: 6pt; padding-left: 14pt; }
+  li { margin-bottom: 2pt; }
+  .status-done { color: #1a7a1a; font-weight: bold; }
+  .status-pending { color: #a05a00; font-weight: bold; }
+  .status-blocked { color: #a3a3a3; font-weight: bold; }
+  .callout { background-color: #EEF5F9; border-left: 3pt solid #0B3D5C; padding: 6pt 10pt; margin: 8pt 0pt; }
+  .diagram-line { text-align: center; font-size: 9pt; color: #0B3D5C; margin: 6pt 0pt 10pt 0pt; }
+  .footer-note { font-size: 7.5pt; color: #999999; text-align: center; margin-top: 16pt;
+    border-top: 0.5pt solid #dddddd; padding-top: 5pt; }
+  code { font-family: Courier, monospace; font-size: 8.5pt; background-color: #f2f2f2; padding: 0pt 2pt; }
+</style>
+</head>
+<body>
+
+<h1>GNSS AI Translation Engine</h1>
+<div class="subtitle">One-Page Executive Summary — Precision-GNSS.com Automated Technical Translation (EN&#8594;ES)</div>
+<div class="badge">Status: FASE 4 &amp; 5 complete (60 tests, real-API validated) &middot; FASE 0-3, 6-10 pending staging access</div>
+
+<p>
+An independent software system that translates Precision-GNSS.com's technical GNSS/RTK content from
+English into European Spanish using the DeepSeek API, built to protect technical accuracy — exact
+numbers, units, conditions and certainty — rather than treat translation as a generic text-rewrite task.
+Every translation passes through three independent AI checks before it is ever eligible for publication.
+</p>
+
+<div class="diagram-line">
+Source Text &#8594; <b>Translator</b> (DeepSeek) &#8594; <b>Technical Reviewer</b> (DeepSeek) &#8594; <b>Terminology Validator</b> (DeepSeek) &#8594; Draft in WordPress (never auto-published)
+</div>
+
+<h2>Technology</h2>
+<p>
+Python 3.10 &middot; DeepSeek API (<code>deepseek-v4-pro</code> / <code>deepseek-v4-flash</code>, OpenAI-compatible,
+JSON mode) &middot; Pydantic v2 for strict response validation &middot; pytest (60 automated tests) &middot;
+designed integration layer: WordPress REST API + a minimal custom mu-plugin (<code>gnss-bridge</code>) to
+reach WPML's PHP-only translation-linking hooks safely &middot; SQLite for translation memory.
+</p>
+
+<h2>Status</h2>
+<table>
+<tr><th>Area</th><th>Status</th></tr>
+<tr><td>Translation Engine — Translator, Reviewer, Terminology Validator, chunking</td><td class="status-done">Complete</td></tr>
+<tr class="alt"><td>Glossary Engine</td><td class="status-done">Complete (seed glossary)</td></tr>
+<tr><td>Translation Memory &amp; QA scoring</td><td class="status-pending">Not started</td></tr>
+<tr class="alt"><td>WordPress/WPML connector, extraction &amp; orchestration</td><td class="status-blocked">Blocked — needs staging access</td></tr>
+</table>
+
+<h2>Cost (DeepSeek, empirically measured on 4 real site pages)</h2>
+<p>
+Using the real <code>chunk_text()</code> splitter and measured system-prompt sizes against 4 live
+precision-gnss.com pages (avg. 2,371 words): <b>~$0.0064</b> per page translation-only, <b>~$0.0129</b>
+per page with full independent review (both on <code>deepseek-v4-pro</code>) — a flat
+<b>~$0.00085 per 1,000 characters</b> across every page tested. Using <code>deepseek-v4-flash</code> for
+the QA calls cuts the full-pipeline cost to <b>~$0.0085</b>/page with no loss of translation quality.
+</p>
+
+<div class="callout">
+<b>Bottom line:</b> well under one cent per page for full quality-assured translation. A 50-page site
+translation pass costs roughly $0.64 total.
+</div>
+
+<h2>Next Steps</h2>
+<ul>
+  <li>Blocked on staging access: WordPress connector, Elementor/Yoast extraction, WPML orchestration.</li>
+  <li>Available now: QA Engine (numeric/unit/URL checks), Translation Memory, <code>gnss-bridge</code> skeleton.</li>
+</ul>
+
+<div class="footer-note">
+GNSS AI Translation Engine — One-Page Summary — 2026-07-23 — Full report: GNSS-AI-Translation-Engine-Executive-Summary.pdf
+</div>
+
+</body>
+</html>
