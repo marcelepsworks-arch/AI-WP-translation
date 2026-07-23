@@ -23,3 +23,20 @@ class TranslationResult(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     issues: list[TranslationIssue] = Field(default_factory=list)
     terminology_used: list[TerminologyUsed] = Field(default_factory=list)
+
+
+class ReviewResult(BaseModel):
+    passed: bool
+    issues: list[TranslationIssue] = Field(default_factory=list)
+
+
+class TerminologyViolation(BaseModel):
+    term: str
+    expected: str
+    found_as: str
+    note: str = ""
+
+
+class TerminologyValidationResult(BaseModel):
+    compliant: bool
+    violations: list[TerminologyViolation] = Field(default_factory=list)

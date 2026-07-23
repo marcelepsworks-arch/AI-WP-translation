@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from app.translation.schemas import TranslationIssue, TranslationResult
+from app.translation.schemas import (
+    ReviewResult,
+    TerminologyValidationResult,
+    TerminologyViolation,
+    TranslationIssue,
+    TranslationResult,
+)
 
 
 def test_translation_result_parses_full_valid_payload():
@@ -63,3 +69,66 @@ def test_translation_result_rejects_confidence_out_of_range(bad_confidence):
 def test_translation_result_requires_translation_field():
     with pytest.raises(ValidationError):
         TranslationResult.model_validate({"confidence": 0.9})
+
+
+def test_review_result_parses_passing_payload():
+    payload = {"passed": True, "issues": []}
+
+    result = ReviewResult.model_validate(payload)
+
+    assert result.passed is True
+    assert result.issues == []
+
+
+def test_review_result_parses_failing_payload_with_issues():
+    payload = {
+        "passed": False,
+        "issues": [
+            {"type": "information_added", "description": "Translation adds a claim not present in source."}
+        ],
+    }
+
+    result = ReviewResult.model_validate(payload)
+
+    assert result.passed is False
+    assert result.issues[0].type == "information_added"
+
+
+def test_review_result_defaults_issues_to_empty_list():
+    result = ReviewResult.model_validate({"passed": True})
+
+    assert result.issues == []
+
+
+def test_terminology_validation_result_parses_compliant_payload():
+    result = TerminologyValidationResult.model_validate({"compliant": True, "violations": []})
+
+    assert result.compliant is True
+    assert result.violations == []
+
+
+def test_terminology_validation_result_parses_violations():
+    payload = {
+        "compliant": False,
+        "violations": [
+            {
+                "term": "base station",
+                "expected": "estación base",
+                "found_as": "estación de referencia",
+                "note": "Inconsistent with mandatory glossary",
+            }
+        ],
+    }
+
+    result = TerminologyValidationResult.model_validate(payload)
+
+    assert result.compliant is False
+    assert isinstance(result.violations[0], TerminologyViolation)
+    assert result.violations[0].term == "base station"
+    assert result.violations[0].found_as == "estación de referencia"
+
+
+def test_terminology_validation_result_defaults_violations_to_empty_list():
+    result = TerminologyValidationResult.model_validate({"compliant": True})
+
+    assert result.violations == []
