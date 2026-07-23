@@ -25,6 +25,9 @@ def get_post_meta(client: WordPressClient, post_id: int) -> dict:
     return get_post(client, post_id).get("meta", {})
 
 
-def get_elementor_data(client: WordPressClient, post_id: int) -> str | None:
-    meta = get_post_meta(client, post_id)
+def get_page_meta(client: WordPressClient, page_id: int) -> dict:
+    return get_page(client, page_id).get("meta", {})
+
+
+def get_elementor_data(meta: dict) -> str | None:
     return meta.get("_elementor_data")

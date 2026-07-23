@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 from app.wordpress.content import (
     get_elementor_data,
     get_page,
+    get_page_meta,
     get_pages,
     get_post,
     get_post_meta,
@@ -68,17 +69,22 @@ def test_get_post_meta_returns_empty_dict_when_no_meta_key():
     assert result == {}
 
 
-def test_get_elementor_data_returns_value_when_present_in_meta():
-    client = _client_returning({"id": 1, "meta": {"_elementor_data": '{"foo": "bar"}'}})
+def test_get_page_meta_returns_meta_dict_from_page():
+    client = _client_returning({"id": 4309, "meta": {"footnotes": ""}})
 
-    result = get_elementor_data(client, 1)
+    result = get_page_meta(client, 4309)
+
+    client.get.assert_called_once_with("/wp-json/wp/v2/pages/4309")
+    assert result == {"footnotes": ""}
+
+
+def test_get_elementor_data_returns_value_when_present_in_meta():
+    result = get_elementor_data({"_elementor_data": '{"foo": "bar"}'})
 
     assert result == '{"foo": "bar"}'
 
 
 def test_get_elementor_data_returns_none_when_not_exposed():
-    client = _client_returning({"id": 1, "meta": {"footnotes": ""}})
-
-    result = get_elementor_data(client, 1)
+    result = get_elementor_data({"footnotes": ""})
 
     assert result is None
