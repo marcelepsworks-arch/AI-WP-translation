@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-07-23 — Chunking de contingut llarg (FASE 4.5) → FASE 4 completa
+
+**Fet per:** Claude (Claude Code), continuant a petició de l'usuari ("Continua per on tingui més lògica").
+
+**Objectiu de la sessió:** completar l'última peça pendent de FASE 4 — dividir contingut llarg en trossos sense trencar frases/números a la meitat, i traduir-los preservant context i glossari.
+
+**Fets:**
+
+1. Skill `writing-plans` → pla a `docs/superpowers/plans/2026-07-23-chunking.md` (3 tasques, TDD).
+2. Skill `executing-plans` → execució inline:
+   - `app/translation/chunking.py`: `chunk_text()` (divisió per paràgrafs, amb fallback a frases per a un paràgraf massa llarg) i `translate_long_text()` (divideix, tradueix cada tros amb `DeepSeekClient.translate()` compartint `context`/glossari, torna a ajuntar).
+   - Suite completa: **60 tests, tots passant** (51 anteriors + 9 nous).
+3. **Incident:** durant el commit de la Task 2, es va descobrir un commit (`520fc05`) fet amb el mateix contingut però que no havia creat jo — l'usuari ha confirmat que va ser ell mateix des d'una altra eina/sessió sobre el mateix repositori, i que no tornarà a passar. Cap acció addicional necessària; working tree i tests verificats correctes després.
+4. `PLA-ACCIO.md` FASE 4 marcada com a **completa** (4.1-4.6).
+
+**Resultat:** FASE 4 (Translation Engine) tancada del tot. El motor de traducció (Translator + Reviewer + Terminology Validator + Glossary + Chunking) és funcional, provat i validat amb l'API real.
+
+**Següent pas:** sense accés a l'staging, l'única feina de codi independent que queda raonablement és preparar l'esquelet PHP del mu-plugin `gnss-bridge` (FASE 1) sense desplegar-lo. La resta (FASES 2-3, 6-9) depenen de tenir contingut/estructura real de WordPress.
+
+---
+
 ## 2026-07-23 — Primera crida real a DeepSeek (validació manual)
 
 **Fet per:** Claude (Claude Code), amb una `DEEPSEEK_API_KEY` real proporcionada per l'usuari només per aquesta sessió (no s'ha guardat enlloc: no a `.env`, no a memòria, no a cap commit — verificat amb `git log --all -p | grep` sobre tot l'historial).
