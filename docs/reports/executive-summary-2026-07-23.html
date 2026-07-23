@@ -450,49 +450,50 @@
   <p>
   Rather than estimate costs theoretically, four real, public pages were pulled from the live site and
   run through the engine's actual content-splitting logic and real prompt sizes — the figures below are
-  measured, not guessed.
+  measured, not guessed. DeepSeek bills in USD; EUR figures alongside are converted at
+  <b>$1 = &euro;0.876</b> (23 July 2026 reference rate) for convenience.
   </p>
 
   <div class="card-row">
-    <div class="card"><div class="num">$0.0064</div><div class="label">Avg. cost per page — translation only</div></div>
-    <div class="card"><div class="num">$0.0129</div><div class="label">Avg. cost per page — with full review</div></div>
-    <div class="card"><div class="num">$0.00085</div><div class="label">Cost per 1,000 characters — full pipeline</div></div>
+    <div class="card"><div class="num">$0.0064</div><div class="label">Avg. cost per page — translation only (&euro;0.0056)</div></div>
+    <div class="card"><div class="num">$0.0129</div><div class="label">Avg. cost per page — with full review (&euro;0.0113)</div></div>
+    <div class="card"><div class="num">$0.00085</div><div class="label">Per 1,000 characters — full pipeline (&euro;0.00074)</div></div>
   </div>
 
   <h3>DeepSeek pricing (as of 23 July 2026)</h3>
   <table>
     <tr><th>Model</th><th>Input</th><th>Output</th><th>Used for</th></tr>
-    <tr><td><code>deepseek-v4-pro</code></td><td>$0.435 / 1M tokens</td><td>$0.87 / 1M tokens</td><td>Translation (default)</td></tr>
-    <tr><td><code>deepseek-v4-flash</code></td><td>$0.14 / 1M tokens</td><td>$0.28 / 1M tokens</td><td>Optional, cheaper QA model</td></tr>
+    <tr><td><code>deepseek-v4-pro</code></td><td>$0.435 (&euro;0.381) / 1M tokens</td><td>$0.87 (&euro;0.762) / 1M tokens</td><td>Translation (default)</td></tr>
+    <tr><td><code>deepseek-v4-flash</code></td><td>$0.14 (&euro;0.123) / 1M tokens</td><td>$0.28 (&euro;0.245) / 1M tokens</td><td>Optional, cheaper QA model</td></tr>
   </table>
 
   <h3>Real pages tested</h3>
   <table>
     <tr><th>Page</th><th>Words</th><th>Translate only</th><th>Full review pipeline</th></tr>
-    <tr><td>Homepage</td><td>1,800</td><td>$0.00523</td><td>$0.01049</td></tr>
-    <tr><td>Archaeology (RTK application)</td><td>2,156</td><td>$0.00585</td><td>$0.01173</td></tr>
-    <tr><td>Precision Agriculture (RTK application)</td><td>3,951</td><td>$0.01040</td><td>$0.02083</td></tr>
-    <tr><td>News — RTK/GNSS for Robotics</td><td>1,575</td><td>$0.00425</td><td>$0.00852</td></tr>
+    <tr><td>Homepage</td><td>1,800</td><td>$0.00523 (&euro;0.00458)</td><td>$0.01049 (&euro;0.00919)</td></tr>
+    <tr><td>Archaeology (RTK application)</td><td>2,156</td><td>$0.00585 (&euro;0.00512)</td><td>$0.01173 (&euro;0.01028)</td></tr>
+    <tr><td>Precision Agriculture (RTK application)</td><td>3,951</td><td>$0.01040 (&euro;0.00911)</td><td>$0.02083 (&euro;0.01825)</td></tr>
+    <tr><td>News — RTK/GNSS for Robotics</td><td>1,575</td><td>$0.00425 (&euro;0.00372)</td><td>$0.00852 (&euro;0.00746)</td></tr>
   </table>
 
-  <h3>Worked example — one page, step by step</h3>
-  <p>
+  <h3 style="margin-top:14px">Worked example — one page, step by step</h3>
+  <p style="margin-bottom:8px">
   Take the <i>Precision Agriculture</i> page above: <b>24,706 characters</b> of translatable prose,
   measured directly from the live page. Applying the flat rate of <b>$0.00085 per 1,000 characters</b>
   (full review pipeline, <code>deepseek-v4-pro</code>) gives:
   </p>
-  <div class="callout">
-  24,706 chars &times; $0.00085 &divide; 1,000 &nbsp;=&nbsp; <b>$0.0210</b> — matching the $0.02083
-  measured directly from the real API call above (the small difference is normal token-count rounding).
-  Translation only (no independent review) comes to about <b>$0.0104</b> for the same page — roughly half,
-  since it skips the Reviewer and Terminology Validator calls.
+  <div class="callout" style="margin:8px 0; padding:12px 18px;">
+  24,706 chars &times; $0.00085 &divide; 1,000 &nbsp;=&nbsp; <b>$0.0210 (&euro;0.0184)</b> — matching the
+  $0.02083 measured directly from the real API call above (the small difference is normal token-count
+  rounding). Translation only (no independent review) comes to about <b>$0.0104 (&euro;0.0091)</b> for the
+  same page — roughly half, since it skips the Reviewer and Terminology Validator calls.
   </div>
 
-  <div class="callout">
+  <div class="callout" style="margin:8px 0; padding:12px 18px;">
   <b>In practical terms:</b> translating and fully reviewing a typical content page costs about
-  <b>one-hundredth of a dollar</b>. A complete first pass across 50 comparable pages would cost roughly
-  <b>$0.64</b> in total. Ongoing costs after launch are far lower still, since only content that actually
-  changes ever needs to be re-translated.
+  <b>one-hundredth of a dollar (about one cent in euros too)</b>. A complete first pass across 50
+  comparable pages would cost roughly <b>$0.64 (&euro;0.56)</b> in total. Ongoing costs after launch are
+  far lower still, since only content that actually changes ever needs to be re-translated.
   </div>
 
   <div class="footer"><span>GNSS AI Translation Engine</span><span>Cost Analysis</span></div>
