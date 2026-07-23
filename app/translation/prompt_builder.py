@@ -91,3 +91,55 @@ def build_system_prompt(
     sections.append(_RESPONSE_FORMAT_RULE)
 
     return "\n\n".join(sections)
+
+
+_REVIEWER_INSTRUCTIONS_TEMPLATE = """You are a senior technical reviewer for GNSS, RTK, PPK, surveying and geodesy content translated from English to {target_language_name}.
+
+Compare the SOURCE text and its TRANSLATION, provided in the user message. Check specifically for:
+1. Information added that was not in the source.
+2. Information removed that was in the source.
+3. Information altered (numbers, units, technical claims).
+4. Changes to conditional statements or qualifications.
+5. Changes to the degree of certainty expressed.
+6. Changes to warnings or limitations.
+7. Incorrect or inconsistent terminology.
+
+If any of these problems are present, the review fails."""
+
+_REVIEWER_RESPONSE_FORMAT_RULE = """Respond ONLY with a JSON object matching this exact shape:
+{"passed": true, "issues": [{"type": "...", "description": "..."}]}
+If no problems are found, return "passed": true and an empty "issues" list."""
+
+_TERMINOLOGY_VALIDATOR_INSTRUCTIONS_TEMPLATE = """You are a terminology auditor for GNSS, RTK, PPK, surveying and geodesy technical translations into {target_language_name}.
+
+Given the TRANSLATION in the user message, verify that every mandatory glossary term used conceptually in the text uses EXACTLY the mandated target term. Flag any deviation."""
+
+_TERMINOLOGY_VALIDATOR_RESPONSE_FORMAT_RULE = """Respond ONLY with a JSON object matching this exact shape:
+{"compliant": true, "violations": [{"term": "...", "expected": "...", "found_as": "...", "note": "..."}]}
+If the translation fully complies, return "compliant": true and an empty "violations" list."""
+
+
+def build_reviewer_system_prompt(target_language_name: str) -> str:
+    sections = [
+        _REVIEWER_INSTRUCTIONS_TEMPLATE.format(target_language_name=target_language_name),
+        _REVIEWER_RESPONSE_FORMAT_RULE,
+    ]
+    return "\n\n".join(sections)
+
+
+def build_terminology_validator_system_prompt(
+    target_language_name: str,
+    glossary_terms: list[GlossaryTerm] | None = None,
+) -> str:
+    sections = [
+        _TERMINOLOGY_VALIDATOR_INSTRUCTIONS_TEMPLATE.format(
+            target_language_name=target_language_name
+        ),
+    ]
+
+    if glossary_terms:
+        sections.append(_build_glossary_section(glossary_terms))
+
+    sections.append(_TERMINOLOGY_VALIDATOR_RESPONSE_FORMAT_RULE)
+
+    return "\n\n".join(sections)
