@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-07-23 — Reviewer tècnic + Terminology Validator (FASE 4.4)
+
+**Fet per:** Claude (Claude Code), continuant a petició de l'usuari ("Continua").
+
+**Objectiu de la sessió:** completar la FASE 4.4 — les dues crides DeepSeek que faltaven (Technical Reviewer i Terminology Validator), independents de la crida Translator ja feta a la sessió anterior.
+
+**Fets:**
+
+1. Skill `writing-plans` → pla nou a `docs/superpowers/plans/2026-07-23-deepseek-reviewer-terminology-validator.md` (4 tasques, TDD).
+2. Skill `executing-plans` → execució inline:
+   - `app/translation/schemas.py`: `ReviewResult`, `TerminologyViolation`, `TerminologyValidationResult` (13 tests de schema, tots passant).
+   - `app/translation/prompt_builder.py`: `build_reviewer_system_prompt()` (compara original vs. traducció, detecta informació afegida/eliminada/alterada, canvis de certesa/condicions/terminologia) i `build_terminology_validator_system_prompt()` (audita compliment del glossari obligatori) (12 tests de prompt, tots passant).
+   - `app/translation/deepseek_client.py`: refactoritzat amb un mètode privat `_call()` compartit; nous mètodes `review()` i `validate_terminology()`; nou paràmetre `qa_model` al constructor (separat de `model`, tal com preveu `.env`: `DEFAULT_MODEL` per traduir, `QA_MODEL` per revisar/validar) (10 tests de client, tots passant).
+   - Suite completa: **39 tests, tots passant** (21 anteriors + 18 nous).
+3. `PLA-ACCIO.md` FASE 4.4 marcada com a feta; `PLA-ACCIO.md` FASE 4.1/4.3 actualitzades per reflectir el `qa_model`.
+
+**Resultat:** les 3 crides DeepSeek del brief (secció 9: Translator / Technical Reviewer / Terminology Validator) ja existeixen com a mètodes independents de `DeepSeekClient`, cadascuna amb el seu propi system prompt i schema de resposta validat. Encara no hi ha cap orquestració que les encadeni (això és FASE 8, pendent de WPML).
+
+**Següent pas:** igual que abans — decidir entre (a) prova real amb `DEEPSEEK_API_KEY`, (b) Glossary Engine (FASE 5) o chunking (FASE 4.5), o (c) accés a l'staging de precision-gnss.com per FASE 0/1.
+
+---
+
 ## 2026-07-23 — Primer codi: client de traducció DeepSeek (FASE 4, parcial)
 
 **Fet per:** Claude (Claude Code), a petició explícita de l'usuari de començar a programar.
