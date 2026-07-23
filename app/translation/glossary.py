@@ -45,3 +45,32 @@ def get_relevant_terms(
                 GlossaryTerm(source=entry.source, target=entry.target, notes=entry.notes)
             )
     return matches
+
+
+class GlossaryViolation(BaseModel):
+    source: str
+    expected_target: str
+
+
+def validate_translation(
+    source_text: str,
+    translated_text: str,
+    entries: list[GlossaryEntry],
+    language: str = "es",
+) -> list[GlossaryViolation]:
+    violations: list[GlossaryViolation] = []
+    for entry in entries:
+        if entry.language != language or entry.status != "mandatory":
+            continue
+
+        source_pattern = r"\b" + re.escape(entry.source) + r"\b"
+        if not re.search(source_pattern, source_text, flags=re.IGNORECASE):
+            continue
+
+        target_pattern = r"\b" + re.escape(entry.target) + r"\b"
+        if not re.search(target_pattern, translated_text, flags=re.IGNORECASE):
+            violations.append(
+                GlossaryViolation(source=entry.source, expected_target=entry.target)
+            )
+
+    return violations

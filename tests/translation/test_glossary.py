@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from app.translation.glossary import GlossaryEntry, get_relevant_terms, load_glossary_files
+from app.translation.glossary import (
+    GlossaryEntry,
+    GlossaryViolation,
+    get_relevant_terms,
+    load_glossary_files,
+    validate_translation,
+)
 from app.translation.prompt_builder import GlossaryTerm
 
 
@@ -122,3 +128,57 @@ def test_get_relevant_terms_returns_empty_list_when_nothing_matches():
     result = get_relevant_terms("This text mentions none of the terms.", entries)
 
     assert result == []
+
+
+def test_validate_translation_flags_missing_mandatory_term():
+    entries = [
+        GlossaryEntry(source="base station", target="estación base", language="es", status="mandatory")
+    ]
+
+    violations = validate_translation(
+        source_text="The base station is powered by solar panels.",
+        translated_text="La estación de referencia se alimenta con paneles solares.",
+        entries=entries,
+    )
+
+    assert violations == [GlossaryViolation(source="base station", expected_target="estación base")]
+
+
+def test_validate_translation_passes_when_mandatory_term_present():
+    entries = [
+        GlossaryEntry(source="base station", target="estación base", language="es", status="mandatory")
+    ]
+
+    violations = validate_translation(
+        source_text="The base station is powered by solar panels.",
+        translated_text="La estación base se alimenta con paneles solares.",
+        entries=entries,
+    )
+
+    assert violations == []
+
+
+def test_validate_translation_ignores_optional_terms():
+    entries = [
+        GlossaryEntry(source="base station", target="estación base", language="es", status="optional")
+    ]
+
+    violations = validate_translation(
+        source_text="The base station is powered by solar panels.",
+        translated_text="La estación de referencia se alimenta con paneles solares.",
+        entries=entries,
+    )
+
+    assert violations == []
+
+
+def test_validate_translation_ignores_terms_not_present_in_source():
+    entries = [GlossaryEntry(source="rover", target="rover", language="es", status="mandatory")]
+
+    violations = validate_translation(
+        source_text="The base station is powered by solar panels.",
+        translated_text="La estación de referencia se alimenta con paneles solares.",
+        entries=entries,
+    )
+
+    assert violations == []
