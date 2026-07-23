@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-07-23 — Afegit cost en euros als dos PDFs
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari.
+
+**Fets:** taxa de canvi consultada ($1 = €0.876, 23/07/2026). Afegides xifres en EUR entre parèntesis al costat de cada xifra en USD (targetes, taules de preus DeepSeek, taula de pàgines reals, exemple treballat) als dos informes, sense substituir el dòlar (moneda de facturació real de DeepSeek). Ajustat l'espaiat de la pàgina de costos de l'informe llarg perquè seguís cabent en una sola pàgina A4 després d'afegir el text extra.
+
+**Resultat:** ambdós PDFs actualitzats (7 i 1 pàgines) i pujats a GitHub.
+
+**Nota:** la tasca prèvia de la mateixa sessió (recompte de caràcters d'ardusimple.com) es va fer explícitament **sense guardar ni commitejar res**, tal com va demanar l'usuari — no apareix als fitxers del projecte.
+
+---
+
 ## 2026-07-23 — Redisseny dels PDFs (nivell "Apple") + exemple de cost treballat
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari ("la maquetació és horrible, vull un nivell Apple").
