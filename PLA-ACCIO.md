@@ -39,13 +39,13 @@ Llegenda d'estat: `[ ]` pendent · `[~]` en curs · `[x]` fet
 
 ## FASE 2 — WordPress Connector (Python)
 
-- [ ] **2.1** `app/wordpress/client.py`: client HTTP base amb Application Password auth, retries i gestió d'errors 401/403/429.
-- [ ] **2.2** `app/wordpress/posts.py` / `pages.py`: `get_post()`, `get_pages()`, `get_post_meta()`, `create_translation()` (crea com a `draft`).
-- [ ] **2.3** `app/wordpress/elementor.py`: `get_elementor_data()` (lectura de `_elementor_data` via `meta` a REST, cal `show_in_rest` per aquest camp — verificar a FASE 0/1 si ja ho exposa Elementor o cal afegir-ho al mu-plugin).
-- [ ] **2.4** `app/wordpress/wpml.py`: `get_wpml_status()` i `link_translation()`, ambdós consumint `gnss-bridge/v1/*` (FASE 1).
-- [ ] **2.5** Test d'integració: llegir una pàgina real, crear una traducció buida, vincular-la, i confirmar via `wp-admin` que WPML la reconeix correctament (sense encara contingut traduït — això és FASE 8).
+- [x] **2.1** `app/wordpress/client.py`: `WordPressClient` amb doble autenticació (Basic Auth de l'staging + Application Password de WP, la segona té prioritat quan totes dues estan disponibles) i retry automàtic en 429/503. *(Fet 2026-07-23 — encara sense Application Password real creada; de moment només s'usa el Basic Auth de l'staging.)*
+- [x] **2.2** `app/wordpress/content.py`: `get_post()`, `get_page()`, `get_pages()`, `get_post_meta()`, `get_page_meta()`. *(Fet 2026-07-23 — un sol fitxer `content.py` en lloc de `posts.py`/`pages.py` separats, ja que la lògica és pràcticament idèntica; `create_translation()` ajornat fins tenir Application Password amb permisos d'escriptura.)*
+- [x] **2.3** `get_elementor_data(meta)`: **redissenyat com a funció pura** sobre un `dict` de meta ja obtingut (no torna a fer cap crida HTTP) — descobert durant una prova real contra l'staging que la versió inicial només funcionava amb posts, no amb pages (bug real, corregit amb TDD). **Confirmat empíricament contra l'staging real: `_elementor_data` NO s'exposa via REST per defecte** (calen `register_post_meta()` al mu-plugin, tal com ja preveia `BIBLIOGRAFIA.md` §6). *(Fet 2026-07-23.)*
+- [ ] **2.4** `app/wordpress/wpml.py`: `get_wpml_status()` i `link_translation()` — **bloquejat**, WPML no instal·lat a l'staging (`AUDITORIA-INICIAL.md` §0.2).
+- [~] **2.5** Test d'integració: fet manualment contra l'staging real (`scripts/inspect_staging_page.py`, provat amb la pàgina "Precision Agriculture" i el post "RTK GNSS for Robotics") — lectura confirmada. Crear/vincular traducció **bloquejat** fins tenir WPML + Application Password amb permisos d'escriptura.
 
-**Sortida de la fase:** connector Python provat contra l'entorn real (o staging), capaç de llegir i crear/vincular sense encara traduir res.
+**Sortida de la fase:** ✅ connector Python de lectura provat contra l'staging real (14 tests nous, 74 en total al projecte). Pendent: 2.4 (bloquejat per WPML), escriptura/creació de traduccions (bloquejat per WPML + Application Password).
 
 ---
 

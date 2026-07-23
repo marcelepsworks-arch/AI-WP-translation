@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-07-23 — FASE 2: WordPress Connector (lectura), provat contra l'staging real
+
+**Fet per:** Claude (Claude Code), continuant l'auditoria de FASE 0 cap a FASE 2 mentre WPML no està instal·lat.
+
+**Fets:**
+
+1. Skill `writing-plans`/`executing-plans` → pla a `docs/superpowers/plans/2026-07-23-wordpress-connector.md` (4 tasques, TDD).
+2. `app/wordpress/client.py`: `WordPressClient` amb doble autenticació (Basic Auth de l'staging + Application Password de WP) i retry en 429/503.
+3. `app/wordpress/content.py`: `get_post()`, `get_page()`, `get_pages()`, `get_post_meta()`, `get_page_meta()`, `get_elementor_data()`.
+4. **Bug real trobat en provar contra l'staging** (`scripts/inspect_staging_page.py`): `get_post_meta` només consultava l'endpoint de posts; en cridar-lo amb l'ID d'una pàgina (Precision Agriculture, 4309) va donar 404. Corregit amb TDD: `get_elementor_data` ara és una funció pura sobre un `dict` de meta ja obtingut, i s'ha afegit `get_page_meta()` en paral·lel a `get_post_meta()`.
+5. **Confirmat empíricament, no només per documentació:** `_elementor_data` no s'exposa via REST per a cap contingut de l'staging (ni posts ni pages) — validant una altra vegada la troballa de `BIBLIOGRAFIA.md` §6.
+6. Suite completa: **74 tests, tots passant** (60 anteriors + 14 nous).
+7. `PLA-ACCIO.md` FASE 2 actualitzada (2.1-2.3 i 2.5 parcial fets; 2.4 bloquejat per manca de WPML).
+
+**Resultat:** connector de lectura de WordPress funcional i validat contra dades reals de l'staging (no mockejades).
+
+**Següent pas:** sense WPML ni Application Password d'escriptura, les properes opcions raonables són: (a) FASE 3 (extracció de blocs semàntics d'Elementor/contingut, ja tenim contingut real per provar-hi), (b) esperar que s'instal·li WPML per desbloquejar FASE 1/2.4/8, o (c) crear una Application Password des del wp-admin ja accessible per preparar l'escriptura.
+
+---
+
 ## 2026-07-23 — FASE 0: primera auditoria real de l'staging (WPML no instal·lat)
 
 **Fet per:** Claude (Claude Code), amb accés d'administrador de WordPress proporcionat per l'usuari.
