@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-07-23 — Primera crida real a DeepSeek (validació manual)
+
+**Fet per:** Claude (Claude Code), amb una `DEEPSEEK_API_KEY` real proporcionada per l'usuari només per aquesta sessió (no s'ha guardat enlloc: no a `.env`, no a memòria, no a cap commit — verificat amb `git log --all -p | grep` sobre tot l'historial).
+
+**Fets:**
+
+1. Execució de `scripts/translate_sample.py` amb la clau real → traducció correcta amb `confidence: 0.98` i terminologia ben aplicada.
+2. Detectat un bug de visualització: caràcters accentuats es veien malament a la consola (`m�dulo` en lloc de `módulo`). Verificat que era només codificació de la consola de Windows (cp1252), no un problema de les dades (el fitxer UTF-8 sortia correcte). **Fix aplicat:** `sys.stdout.reconfigure(encoding="utf-8")` a `scripts/translate_sample.py`.
+3. Provades 3 frases tècniques addicionals (rover/fix, baseline/accuracy, correction stream/float solution) — totes amb `confidence` ≥0.95 i terminologia del glossari correcta.
+4. **Troballa significativa:** a la frase "The rover achieves a fix **within** 5 seconds", el Translator ho va traduir com "en **menos de** 5 segundos" (canvi subtil de ≤5s a <5s). El `DeepSeekClient.review()` (FASE 4.4) **ho ha detectat correctament** (`passed: False`, `issue: information altered`), validant que el disseny de 3 crides separades (Translator + Reviewer + Terminology Validator) funciona tal com estava previst — el Reviewer atrapa matisos que el Translator sol passa per alt.
+5. **Descoberta no relacionada:** el repositori local ja estava connectat a un remot de GitHub (`marcelepsworks-arch/AI-WP-translation`, afegit fora d'aquesta sessió — probablement via VS Code) i **tots els commits ja hi estaven sincronitzats**. Verificat que la clau API no apareix en cap commit de l'historial.
+
+**Resultat:** primera validació end-to-end amb l'API real de DeepSeek, amb resultats consistents i el mecanisme de revisió funcionant com a xarxa de seguretat real (no només teòrica).
+
+**Següent pas:** decidir amb l'usuari si el repositori a GitHub ha de ser públic/privat i si l'auto-sync és el comportament desitjat; després continuar amb FASE 4.5 (chunking) o preparar l'esquelet del mu-plugin `gnss-bridge` (FASE 1) sense desplegar-lo encara.
+
+---
+
 ## 2026-07-23 — Glossary Engine (FASE 5)
 
 **Fet per:** Claude (Claude Code), continuant a petició de l'usuari ("Continua, encara no tinc accés a l'staging").
