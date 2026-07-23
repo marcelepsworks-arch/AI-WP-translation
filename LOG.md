@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-07-23 — Primer codi: client de traducció DeepSeek (FASE 4, parcial)
+
+**Fet per:** Claude (Claude Code), a petició explícita de l'usuari de començar a programar.
+
+**Objectiu de la sessió:** implementar la primera peça de codi real del projecte — la crida a DeepSeek per traduir contingut tècnic amb precisió — sense dependre encara de credencials de WordPress/WPML (que no tenim).
+
+**Decisió d'abast:** en lloc d'intentar les 10 fases del `ROADMAP.md` de cop, es va acotar aquesta primera tanda al nucli de la FASE 4 (Translation Engine): `settings`, `schemas`, `prompt_builder`, `deepseek_client`. Queden fora d'aquesta tanda (i pendents per a properes sessions): la crida "Reviewer"/"Terminology Validator" (FASE 4.4), el Glossary Engine real (FASE 5), i tot el que depèn de WordPress/WPML/Elementor (FASES 1-3, 6-8) perquè encara no hi ha accés a l'staging.
+
+**Fets:**
+
+1. Skill `writing-plans` → pla escrit a `docs/superpowers/plans/2026-07-23-deepseek-translation-client.md` (5 tasques, TDD pas a pas).
+2. Skill `executing-plans` → execució inline del pla:
+   - Inicialitzat el repositori git (`git init`), primer commit amb tota la documentació prèvia.
+   - Entorn virtual Python (`.venv`) + `requirements.txt` (`openai`, `pydantic`, `python-dotenv`, `pytest`, `pytest-mock`).
+   - `app/config/settings.py` — càrrega de configuració des de variables d'entorn, amb tests (4 passed).
+   - `app/translation/schemas.py` — models Pydantic pel contracte JSON de resposta de DeepSeek (brief secció 11), amb tests (7 passed).
+   - `app/translation/prompt_builder.py` — construcció del system prompt amb les regles exactes del brief (secció 10) + injecció opcional de glossari, amb tests (5 passed).
+   - `app/translation/deepseek_client.py` — `DeepSeekClient.translate()`, crida a l'API de DeepSeek en mode JSON via SDK compatible OpenAI, amb tests (5 passed, sense trucades reals — tot mockejat).
+   - `scripts/translate_sample.py` — script manual per fer una crida real de prova (no s'executa en CI, requereix `DEEPSEEK_API_KEY` real).
+   - Suite completa: **21 tests, tots passant.**
+3. Cada tasca amb el seu propi commit atòmic (TDD: test fallant → implementació → test passant → commit).
+
+**Resultat:** primer codi funcional del projecte, provat i commitejat. Encara no s'ha fet cap crida real a DeepSeek (calen credencials reals de l'usuari per fer-ho amb `scripts/translate_sample.py`).
+
+**Següent pas:** decidir amb l'usuari si (a) es fa una prova manual real amb una `DEEPSEEK_API_KEY` de veritat, (b) es continua amb la següent peça independent de codi (Glossary Engine, FASE 5, o Reviewer/Terminology Validator, FASE 4.4), o (c) es prioritza aconseguir accés a l'staging de precision-gnss.com per poder començar la FASE 0/1 (WordPress/WPML).
+
+---
+
 ## 2026-07-23 — Confirmació d'entorn (staging) i abast (contingut, no tema)
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari.

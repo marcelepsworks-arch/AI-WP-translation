@@ -68,14 +68,14 @@ Llegenda d'estat: `[ ]` pendent · `[~]` en curs · `[x]` fet
 
 ## FASE 4 — Translation Engine (DeepSeek)
 
-- [ ] **4.1** `app/translation/deepseek_client.py`: client via SDK `openai` amb `base_url=https://api.deepseek.com`, JSON mode activat, model configurable per `.env` (`DEFAULT_MODEL`, `QA_MODEL`).
-- [ ] **4.2** `app/translation/prompt_builder.py`: implementa el prompt de sistema exacte de la secció 10 del brief (18 regles MUST + 5 regles MUST NOT).
-- [ ] **4.3** `app/translation/translator.py`: crida "Translator" aïllada (brief secció 9.A), retorna JSON validat contra l'schema de la secció 11.
-- [ ] **4.4** Segona crida independent "Technical Reviewer" (secció 9.B) i tercera "Terminology Validator" (secció 9.C) — **mai combinades en una sola petició**.
+- [x] **4.1** `app/translation/deepseek_client.py`: client via SDK `openai` amb `base_url=https://api.deepseek.com`, JSON mode activat, model configurable (`DeepSeekClient(api_key, base_url, model)`). *(Fet 2026-07-23 — falta encara llegir `QA_MODEL` des de `Settings` quan es construeixi el Reviewer a 4.4.)*
+- [x] **4.2** `app/translation/prompt_builder.py`: implementa el prompt de sistema exacte de la secció 10 del brief (15 regles MUST + 6 regles MUST NOT), parametritzat per idioma destí i glossari opcional. *(Fet 2026-07-23.)*
+- [x] **4.3** Crida "Translator" aïllada (brief secció 9.A): `DeepSeekClient.translate()` retorna `TranslationResult` validat contra l'schema de la secció 11 (`app/translation/schemas.py`). *(Fet 2026-07-23 — implementat com a mètode del client, no com a fitxer `translator.py` separat; es reavaluarà si cal separar-ho quan s'afegeixi 4.4.)*
+- [ ] **4.4** Segona crida independent "Technical Reviewer" (secció 9.B) i tercera "Terminology Validator" (secció 9.C) — **mai combinades en una sola petició**. Pendent — següent peça de codi recomanada.
 - [ ] **4.5** `app/translation/chunking.py`: divisió de contingut llarg en blocs per no superar límits de context/cost, preservant context (secció 6 del brief: `"context": "RTK Applications > Archaeology"`).
-- [ ] **4.6** Test unitari amb 10-15 frases tècniques reals extretes de precision-gnss.com (números, unitats, termes GNSS) i inspecció manual de la sortida.
+- [~] **4.6** Test unitari: 21 tests automatitzats (mockejats) cobrint settings/schema/prompt/client. **Pendent:** provar amb 10-15 frases tècniques reals extretes de precision-gnss.com i una crida real a l'API (`scripts/translate_sample.py`, requereix `DEEPSEEK_API_KEY` real de l'usuari).
 
-**Sortida de la fase:** client DeepSeek funcional amb sortida JSON vàlida i estable en 3 execucions consecutives sobre el mateix input.
+**Sortida de la fase:** ✅ nucli del client DeepSeek funcional i provat (mockejat) — codi a `app/config/settings.py`, `app/translation/{schemas,prompt_builder,deepseek_client}.py`, tests a `tests/`, pla d'implementació a `docs/superpowers/plans/2026-07-23-deepseek-translation-client.md`. Pendent: 4.4, 4.5, i validació amb crida real (4.6).
 
 ---
 

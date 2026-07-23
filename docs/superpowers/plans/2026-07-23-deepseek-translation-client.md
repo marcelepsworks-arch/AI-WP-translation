@@ -68,7 +68,7 @@ AI-WP-translation/
 - Produces: `Settings` dataclass with fields `deepseek_api_key: str`, `deepseek_base_url: str`, `default_model: str`, `qa_model: str`, `source_language: str`, `target_languages: list[str]`.
 - Produces: `load_settings(env: dict[str, str] | None = None) -> Settings`.
 
-- [ ] **Step 1: Create `requirements.txt`**
+- [x] **Step 1: Create `requirements.txt`**
 
 ```
 openai>=1.40.0
@@ -78,7 +78,7 @@ pytest>=8.0.0
 pytest-mock>=3.14.0
 ```
 
-- [ ] **Step 2: Create `.env.example`**
+- [x] **Step 2: Create `.env.example`**
 
 ```
 DEEPSEEK_API_KEY=
@@ -89,7 +89,7 @@ SOURCE_LANGUAGE=en
 TARGET_LANGUAGES=es
 ```
 
-- [ ] **Step 3: Create `pytest.ini`**
+- [x] **Step 3: Create `pytest.ini`**
 
 ```ini
 [pytest]
@@ -97,7 +97,7 @@ testpaths = tests
 python_files = test_*.py
 ```
 
-- [ ] **Step 4: Create package init files**
+- [x] **Step 4: Create package init files**
 
 `app/__init__.py`:
 ```python
@@ -115,7 +115,7 @@ python_files = test_*.py
 ```python
 ```
 
-- [ ] **Step 5: Write the failing test — `tests/config/test_settings.py`**
+- [x] **Step 5: Write the failing test — `tests/config/test_settings.py`**
 
 ```python
 import pytest
@@ -170,12 +170,12 @@ def test_load_settings_strips_whitespace_from_target_languages():
     assert settings.target_languages == ["es", "fr", "de"]
 ```
 
-- [ ] **Step 6: Run test to verify it fails**
+- [x] **Step 6: Run test to verify it fails**
 
 Run: `python -m pytest tests/config/test_settings.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.config.settings'` (or similar import error).
 
-- [ ] **Step 7: Write minimal implementation — `app/config/settings.py`**
+- [x] **Step 7: Write minimal implementation — `app/config/settings.py`**
 
 ```python
 """Environment-based configuration loading for the translation engine."""
@@ -221,12 +221,12 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
     )
 ```
 
-- [ ] **Step 8: Run test to verify it passes**
+- [x] **Step 8: Run test to verify it passes**
 
 Run: `python -m pytest tests/config/test_settings.py -v`
 Expected: 4 passed.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add requirements.txt .env.example pytest.ini app/__init__.py app/config/__init__.py app/config/settings.py tests/__init__.py tests/config/__init__.py tests/config/test_settings.py
@@ -247,17 +247,17 @@ git commit -m "feat: add settings loader for DeepSeek/translation config"
 - Consumes: nothing from Task 1.
 - Produces: `TerminologyUsed(source: str, target: str)`, `TranslationIssue(type: str, description: str)`, `TranslationResult(translation: str, confidence: float, issues: list[TranslationIssue], terminology_used: list[TerminologyUsed])`. `TranslationResult.model_validate(dict)` is the entry point later tasks use to parse the raw DeepSeek JSON response.
 
-- [ ] **Step 1: Create `app/translation/__init__.py`**
+- [x] **Step 1: Create `app/translation/__init__.py`**
 
 ```python
 ```
 
-- [ ] **Step 2: Create `tests/translation/__init__.py`**
+- [x] **Step 2: Create `tests/translation/__init__.py`**
 
 ```python
 ```
 
-- [ ] **Step 3: Write the failing test — `tests/translation/test_schemas.py`**
+- [x] **Step 3: Write the failing test — `tests/translation/test_schemas.py`**
 
 ```python
 import pytest
@@ -327,12 +327,12 @@ def test_translation_result_requires_translation_field():
         TranslationResult.model_validate({"confidence": 0.9})
 ```
 
-- [ ] **Step 4: Run test to verify it fails**
+- [x] **Step 4: Run test to verify it fails**
 
 Run: `python -m pytest tests/translation/test_schemas.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.translation.schemas'`.
 
-- [ ] **Step 5: Write minimal implementation — `app/translation/schemas.py`**
+- [x] **Step 5: Write minimal implementation — `app/translation/schemas.py`**
 
 ```python
 """Structured response schema for DeepSeek translation calls.
@@ -362,12 +362,12 @@ class TranslationResult(BaseModel):
     terminology_used: list[TerminologyUsed] = Field(default_factory=list)
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `python -m pytest tests/translation/test_schemas.py -v`
 Expected: 5 passed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add app/translation/__init__.py app/translation/schemas.py tests/translation/__init__.py tests/translation/test_schemas.py
@@ -386,7 +386,7 @@ git commit -m "feat: add Pydantic schema for DeepSeek translation responses"
 - Consumes: nothing from Tasks 1-2 (pure string building).
 - Produces: `GlossaryTerm(source: str, target: str, notes: str = "")`; `build_system_prompt(target_language_name: str, glossary_terms: list[GlossaryTerm] | None = None) -> str`. Task 4 calls this to build the `system` message.
 
-- [ ] **Step 1: Write the failing test — `tests/translation/test_prompt_builder.py`**
+- [x] **Step 1: Write the failing test — `tests/translation/test_prompt_builder.py`**
 
 ```python
 from app.translation.prompt_builder import GlossaryTerm, build_system_prompt
@@ -434,12 +434,12 @@ def test_prompt_includes_glossary_terms_when_given():
     assert "rover -> rover" in prompt
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/translation/test_prompt_builder.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.translation.prompt_builder'`.
 
-- [ ] **Step 3: Write minimal implementation — `app/translation/prompt_builder.py`**
+- [x] **Step 3: Write minimal implementation — `app/translation/prompt_builder.py`**
 
 ```python
 """Builds the DeepSeek system prompt for technical GNSS/RTK translation.
@@ -537,12 +537,12 @@ def build_system_prompt(
     return "\n\n".join(sections)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/translation/test_prompt_builder.py -v`
 Expected: 6 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/translation/prompt_builder.py tests/translation/test_prompt_builder.py
@@ -561,7 +561,7 @@ git commit -m "feat: add DeepSeek system prompt builder with glossary injection"
 - Consumes: `build_system_prompt(target_language_name, glossary_terms)` from Task 3; `TranslationResult.model_validate(dict)` from Task 2; `Settings` from Task 1 (for `deepseek_api_key`, `deepseek_base_url`, `default_model`).
 - Produces: `DeepSeekClient(api_key: str, base_url: str = "https://api.deepseek.com", model: str = "deepseek-v4-pro", client: OpenAI | None = None)` with method `translate(source_text: str, target_language_name: str, context: str = "", glossary_terms: list[GlossaryTerm] | None = None) -> TranslationResult`. The `client` constructor param exists purely so tests can inject a fake — production code never passes it.
 
-- [ ] **Step 1: Write the failing test — `tests/translation/test_deepseek_client.py`**
+- [x] **Step 1: Write the failing test — `tests/translation/test_deepseek_client.py`**
 
 ```python
 import json
@@ -651,12 +651,12 @@ def test_client_constructs_openai_client_with_base_url_when_not_injected():
     assert "api.deepseek.com" in str(client._client.base_url)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/translation/test_deepseek_client.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.translation.deepseek_client'`.
 
-- [ ] **Step 3: Write minimal implementation — `app/translation/deepseek_client.py`**
+- [x] **Step 3: Write minimal implementation — `app/translation/deepseek_client.py`**
 
 ```python
 """Client for calling DeepSeek's OpenAI-compatible chat completions API
@@ -716,17 +716,17 @@ class DeepSeekClient:
         return f"Text to translate:\n{source_text}"
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/translation/test_deepseek_client.py -v`
 Expected: 5 passed.
 
-- [ ] **Step 5: Run the full test suite**
+- [x] **Step 5: Run the full test suite**
 
 Run: `python -m pytest -v`
 Expected: all tests from Tasks 1-4 pass (19 tests total).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add app/translation/deepseek_client.py tests/translation/test_deepseek_client.py
@@ -743,7 +743,7 @@ git commit -m "feat: add DeepSeekClient with JSON-mode structured translation"
 **Interfaces:**
 - Consumes: `load_settings()` (Task 1), `DeepSeekClient` (Task 4). No new interfaces produced — this is a thin CLI entry point, not imported by other code.
 
-- [ ] **Step 1: Create `scripts/translate_sample.py`**
+- [x] **Step 1: Create `scripts/translate_sample.py`**
 
 ```python
 """Manual smoke test: translate one hardcoded technical sentence via DeepSeek.
@@ -805,12 +805,12 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Verify the script is syntactically valid (does not run it — no API key required for this check)**
+- [x] **Step 2: Verify the script is syntactically valid (does not run it — no API key required for this check)**
 
 Run: `python -m py_compile scripts/translate_sample.py`
 Expected: no output, exit code 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add scripts/translate_sample.py
