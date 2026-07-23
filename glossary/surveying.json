@@ -1,0 +1,30 @@
+[
+  {
+    "source": "total station",
+    "target": "estación total",
+    "language": "es",
+    "status": "mandatory",
+    "context": "surveying"
+  },
+  {
+    "source": "benchmark",
+    "target": "punto de referencia",
+    "language": "es",
+    "status": "mandatory",
+    "context": "geodesy"
+  },
+  {
+    "source": "datum",
+    "target": "datum",
+    "language": "es",
+    "status": "mandatory",
+    "notes": "Do not translate — standard geodetic term"
+  },
+  {
+    "source": "coordinate reference system",
+    "target": "sistema de referencia de coordenadas",
+    "language": "es",
+    "status": "mandatory",
+    "context": "geodesy"
+  }
+]

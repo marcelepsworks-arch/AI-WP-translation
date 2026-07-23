@@ -1,0 +1,45 @@
+[
+  {
+    "source": "base station",
+    "target": "estación base",
+    "language": "es",
+    "status": "mandatory",
+    "notes": "GNSS/RTK context"
+  },
+  {
+    "source": "rover",
+    "target": "rover",
+    "language": "es",
+    "status": "mandatory",
+    "notes": "Do not translate — standard term in Spanish GNSS usage"
+  },
+  {
+    "source": "fix",
+    "target": "solución fija",
+    "language": "es",
+    "status": "mandatory",
+    "context": "RTK positioning",
+    "notes": "Do not translate as 'arreglar'"
+  },
+  {
+    "source": "float solution",
+    "target": "solución flotante",
+    "language": "es",
+    "status": "mandatory",
+    "context": "RTK positioning"
+  },
+  {
+    "source": "baseline",
+    "target": "línea base",
+    "language": "es",
+    "status": "mandatory",
+    "context": "RTK/PPK positioning"
+  },
+  {
+    "source": "correction stream",
+    "target": "flujo de correcciones",
+    "language": "es",
+    "status": "mandatory",
+    "context": "NTRIP/RTK"
+  }
+]
