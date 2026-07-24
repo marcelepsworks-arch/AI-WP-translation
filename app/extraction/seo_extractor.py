@@ -7,6 +7,13 @@ from __future__ import annotations
 from app.extraction.protected_content import is_protected_content
 from app.extraction.schemas import ContentBlock
 
+_FIELD_TO_BLOCK_TYPE = {
+    "title": "seo_title",
+    "description": "seo_description",
+    "og_title": "og_title",
+    "og_description": "og_description",
+}
+
 
 def extract_yoast_blocks(
     yoast_head_json: dict | None,
@@ -18,27 +25,17 @@ def extract_yoast_blocks(
 
     blocks: list[ContentBlock] = []
 
-    seo_title = (yoast_head_json.get("title") or "").strip()
-    if seo_title:
+    for field, block_type in _FIELD_TO_BLOCK_TYPE.items():
+        value = (yoast_head_json.get(field) or "").strip()
+        if not value:
+            continue
         blocks.append(
             ContentBlock(
-                content_id=f"{id_prefix}_seo_title",
-                type="seo_title",
+                content_id=f"{id_prefix}_{block_type}",
+                type=block_type,
                 context=context,
-                source=seo_title,
-                translate=not is_protected_content(seo_title),
-            )
-        )
-
-    seo_description = (yoast_head_json.get("description") or "").strip()
-    if seo_description:
-        blocks.append(
-            ContentBlock(
-                content_id=f"{id_prefix}_seo_description",
-                type="seo_description",
-                context=context,
-                source=seo_description,
-                translate=not is_protected_content(seo_description),
+                source=value,
+                translate=not is_protected_content(value),
             )
         )
 

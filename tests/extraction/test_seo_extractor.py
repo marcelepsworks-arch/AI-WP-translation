@@ -22,3 +22,28 @@ def test_extract_yoast_blocks_skips_missing_fields():
 
     assert len(blocks) == 1
     assert blocks[0].type == "seo_title"
+
+
+def test_extract_yoast_blocks_includes_og_title_and_og_description():
+    yoast = {
+        "title": "Precision Agriculture - Precision GNSS",
+        "description": "RTK for Agriculture.",
+        "og_title": "Precision Agriculture",
+        "og_description": "Learn how RTK helps farming.",
+    }
+
+    blocks = extract_yoast_blocks(yoast, id_prefix="page_4309")
+
+    types = [b.type for b in blocks]
+    assert types == ["seo_title", "seo_description", "og_title", "og_description"]
+    assert blocks[2].source == "Precision Agriculture"
+    assert blocks[2].content_id == "page_4309_og_title"
+    assert blocks[3].source == "Learn how RTK helps farming."
+
+
+def test_extract_yoast_blocks_skips_og_fields_when_absent():
+    yoast = {"title": "Only title", "description": "Only description"}
+
+    blocks = extract_yoast_blocks(yoast, id_prefix="page_1")
+
+    assert len(blocks) == 2
