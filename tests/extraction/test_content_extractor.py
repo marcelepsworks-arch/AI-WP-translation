@@ -84,3 +84,30 @@ def test_extract_page_content_works_without_excerpt_key_at_all():
     blocks = extract_page_content(page)
 
     assert [b for b in blocks if b.type == "excerpt"] == []
+
+
+def test_extract_page_content_includes_featured_media_alt_when_provided():
+    featured_media = {"id": 55, "alt_text": "Tractor with RTK antenna in a field", "caption": {"rendered": ""}}
+
+    blocks = extract_page_content(_sample_page(), id_prefix="page_4309", featured_media=featured_media)
+
+    alt_blocks = [b for b in blocks if b.type == "alt_text"]
+    assert len(alt_blocks) == 1
+    assert alt_blocks[0].source == "Tractor with RTK antenna in a field"
+    assert alt_blocks[0].content_id == "page_4309_featured_media_55_alt"
+
+
+def test_extract_page_content_includes_featured_media_caption_when_present():
+    featured_media = {"id": 55, "alt_text": "", "caption": {"rendered": "<p>A tractor in a field.</p>"}}
+
+    blocks = extract_page_content(_sample_page(), id_prefix="page_4309", featured_media=featured_media)
+
+    caption_blocks = [b for b in blocks if b.type == "caption"]
+    assert len(caption_blocks) == 1
+    assert caption_blocks[0].source == "A tractor in a field."
+
+
+def test_extract_page_content_ignores_featured_media_when_not_provided():
+    blocks = extract_page_content(_sample_page())
+
+    assert [b for b in blocks if b.type in ("alt_text", "caption")] == []

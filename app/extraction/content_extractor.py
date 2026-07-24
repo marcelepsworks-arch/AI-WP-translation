@@ -12,7 +12,11 @@ from app.extraction.schemas import ContentBlock
 from app.extraction.seo_extractor import extract_yoast_blocks
 
 
-def extract_page_content(page: dict, id_prefix: str | None = None) -> list[ContentBlock]:
+def extract_page_content(
+    page: dict,
+    id_prefix: str | None = None,
+    featured_media: dict | None = None,
+) -> list[ContentBlock]:
     prefix = id_prefix or f"page_{page['id']}"
     blocks: list[ContentBlock] = []
 
@@ -42,6 +46,32 @@ def extract_page_content(page: dict, id_prefix: str | None = None) -> list[Conte
         )
 
     blocks.extend(extract_yoast_blocks(page.get("yoast_head_json"), id_prefix=prefix, context=title))
+
+    if featured_media:
+        media_id = featured_media.get("id", 0)
+        alt_text = (featured_media.get("alt_text") or "").strip()
+        if alt_text:
+            blocks.append(
+                ContentBlock(
+                    content_id=f"{prefix}_featured_media_{media_id}_alt",
+                    type="alt_text",
+                    context=title,
+                    source=alt_text,
+                    translate=not is_protected_content(alt_text),
+                )
+            )
+        caption_html = featured_media.get("caption", {}).get("rendered", "")
+        caption_text = BeautifulSoup(caption_html, "html.parser").get_text(separator=" ", strip=True)
+        if caption_text:
+            blocks.append(
+                ContentBlock(
+                    content_id=f"{prefix}_featured_media_{media_id}_caption",
+                    type="caption",
+                    context=title,
+                    source=caption_text,
+                    translate=not is_protected_content(caption_text),
+                )
+            )
 
     body_html = page["content"]["rendered"]
     blocks.extend(extract_blocks(body_html, id_prefix=prefix))
