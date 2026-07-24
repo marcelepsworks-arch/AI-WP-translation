@@ -111,3 +111,21 @@ def test_extract_page_content_ignores_featured_media_when_not_provided():
     blocks = extract_page_content(_sample_page())
 
     assert [b for b in blocks if b.type in ("alt_text", "caption")] == []
+
+
+def test_extract_page_content_includes_categories_and_tags_when_provided():
+    categories = [{"id": 8, "name": "RTK Applications"}]
+    tags = [{"id": 3, "name": "Precision Agriculture"}]
+
+    blocks = extract_page_content(
+        _sample_page(), id_prefix="page_4309", categories=categories, tags=tags
+    )
+
+    assert any(b.type == "category_name" and b.source == "RTK Applications" for b in blocks)
+    assert any(b.type == "tag_name" and b.source == "Precision Agriculture" for b in blocks)
+
+
+def test_extract_page_content_ignores_categories_and_tags_when_not_provided():
+    blocks = extract_page_content(_sample_page())
+
+    assert [b for b in blocks if b.type in ("category_name", "tag_name")] == []

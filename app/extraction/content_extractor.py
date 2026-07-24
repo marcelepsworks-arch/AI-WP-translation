@@ -10,12 +10,15 @@ from app.extraction.html_parser import extract_blocks
 from app.extraction.protected_content import is_protected_content
 from app.extraction.schemas import ContentBlock
 from app.extraction.seo_extractor import extract_yoast_blocks
+from app.extraction.taxonomy_extractor import extract_taxonomy_terms
 
 
 def extract_page_content(
     page: dict,
     id_prefix: str | None = None,
     featured_media: dict | None = None,
+    categories: list[dict] | None = None,
+    tags: list[dict] | None = None,
 ) -> list[ContentBlock]:
     prefix = id_prefix or f"page_{page['id']}"
     blocks: list[ContentBlock] = []
@@ -75,5 +78,10 @@ def extract_page_content(
 
     body_html = page["content"]["rendered"]
     blocks.extend(extract_blocks(body_html, id_prefix=prefix))
+
+    if categories:
+        blocks.extend(extract_taxonomy_terms(categories, id_prefix=prefix, term_type="category"))
+    if tags:
+        blocks.extend(extract_taxonomy_terms(tags, id_prefix=prefix, term_type="tag"))
 
     return blocks
