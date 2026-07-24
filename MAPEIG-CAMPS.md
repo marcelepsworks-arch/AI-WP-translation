@@ -2,7 +2,7 @@
 
 > Resposta a la pregunta de l'usuari (2026-07-24): "el sistema ha de poder mapejar tots els camps de WordPress involucrats... ja els tens tots detectats? Per posts, pàgines i productes de WordPress i WooCommerce?"
 >
-> **Resposta curta: no, encara no els teníem tots mapejats.** Fins ara el motor només gestionava títol, cos i 2 camps de Yoast (title/description). Aquest document és el resultat d'una auditoria real i completa contra `staging.precision-gnss.com` (via REST API) fet per tancar aquest buit. **No hi ha WooCommerce/productes en aquest lloc** (confirmat a `AUDITORIA-INICIAL.md` §0.2) — la secció corresponent explica què caldria si mai s'aplica a un lloc que sí en tingui (p. ex. una futura versió per ArduSimple).
+> **Resposta curta: no els teníem tots mapejats el 2026-07-24, però ja sí (2026-07-24, més tard la mateixa sessió).** El motor gestiona ara títol, cos, excerpt, tots els camps traduïbles de Yoast (title/description/og_title/og_description), imatge destacada (alt/caption) i categories/etiquetes, per a posts, pages **i productes WooCommerce** (secció 6). Aquest document és el resultat d'una auditoria real i completa contra `staging.precision-gnss.com` (via REST API).
 
 ---
 
@@ -14,10 +14,10 @@ Auditat contra `wp-json/wp/v2/pages/4309` (Precision Agriculture) i `wp-json/wp/
 |---|---|---|---|
 | `title.rendered` | ✅ Sí | ✅ Sí (`content_extractor.py`) | — |
 | `content.rendered` | ✅ Sí | ✅ Sí (`html_parser.py`) | Headings, paràgrafs, llistes, cites, botons, alt text d'imatges inserides al cos |
-| `excerpt.rendered` | ✅ Sí | ❌ **No** | Existeix i té contingut (sovint auto-generat del cos, però pot ser manual i diferent). **Falta afegir-lo a `content_extractor.py`.** |
+| `excerpt.rendered` | ✅ Sí | ✅ Sí *(2026-07-24)* | Provat contra dades reals de l'staging |
 | `meta` (custom fields) | Depèn | ✅ Parcial | Buit per defecte (`{"footnotes": ""}`) — cap custom field ACF en aquest lloc (confirmat, no hi ha ACF instal·lat) |
-| `featured_media` (ID) | Indirecte | ❌ **No** | És només un ID; cal una crida a `/wp-json/wp/v2/media/{id}` per obtenir `alt_text`/`caption`/`title`/`description` de la imatge destacada |
-| `categories` / `tags` (només posts) | ✅ Sí (nom + descripció del terme) | ❌ **No** | Veure secció 3 |
+| `featured_media` (ID) | Indirecte | ✅ Sí *(2026-07-24)* | `extract_page_content()` accepta ara un paràmetre opcional `featured_media` (dict ja obtingut de `/wp-json/wp/v2/media/{id}`) — extreu `alt_text` i `caption`. L'extracció segueix sent pura (sense I/O): **qui crida ha de fer la crida a l'endpoint de media i passar-li el resultat.** |
+| `categories` / `tags` (només posts) | ✅ Sí (nom + descripció del terme) | ✅ Sí *(2026-07-24)* | Paràmetres opcionals `categories`/`tags` (llistes de termes ja resolts), reutilitzant `extract_taxonomy_terms()`. Provat amb dades reals: cal que qui crida filtri només els termes assignats al post concret (`post["categories"]` dona només IDs; cal resoldre'ls contra `/wp-json/wp/v2/categories`). |
 | `author`, `date`, `slug`, `status`, `template`, `comment_status` | ❌ No | — | Metadades tècniques/administratives, mai traduïbles |
 
 ## 2. Yoast SEO — tots els camps de `yoast_head_json`
@@ -28,8 +28,8 @@ Fins ara només fèiem servir `title` i `description`. L'auditoria mostra **9 ca
 |---|---|---|---|
 | `title` | ✅ Sí | ✅ Sí | — |
 | `description` | ✅ Sí | ✅ Sí | — |
-| `og_title` | ✅ Sí | ❌ **No** | Títol per a xarxes socials (Facebook/LinkedIn). Sovint idèntic a `title` per defecte, però es pot configurar diferent a Yoast. |
-| `og_description` | ✅ Sí | ❌ **No** | Descripció per a xarxes socials. Mateixa observació. |
+| `og_title` | ✅ Sí | ✅ Sí *(2026-07-24)* | Títol per a xarxes socials (Facebook/LinkedIn). Sovint idèntic a `title` per defecte, però es pot configurar diferent a Yoast. |
+| `og_description` | ✅ Sí | ✅ Sí *(2026-07-24)* | Descripció per a xarxes socials. Mateixa observació. |
 | `robots` | ❌ No | — | Directives tècniques (`index, follow`, etc.) |
 | `og_locale`, `og_type`, `og_url`, `og_site_name` | ❌ No | — | Metadades tècniques/URLs |
 | `twitter_card` | ❌ No | — | Només un identificador de tipus (`summary_large_image`), no text |
@@ -42,8 +42,8 @@ Fins ara només fèiem servir `title` i `description`. L'auditoria mostra **9 ca
 
 | Element | Traduïble? | Gestionat actualment |
 |---|---|---|
-| Nom del terme (p. ex. "RTK Applications", "News") | ✅ Sí | ❌ **No** |
-| Descripció del terme | ✅ Sí (si n'hi ha; buides en aquest lloc) | ❌ **No** |
+| Nom del terme (p. ex. "RTK Applications", "News") | ✅ Sí | ✅ Sí *(2026-07-24)* |
+| Descripció del terme | ✅ Sí (si n'hi ha; buides en aquest lloc) | ✅ Sí *(2026-07-24)* |
 
 4 categories reals detectades: `news`, `quick-start`, `rtk-applications`, `uncategorized`. `pages` no tenen taxonomies pròpies (`wp-json/wp/v2/types` confirma `taxonomies: []` per a `page`).
 
@@ -55,8 +55,8 @@ Auditat contra `wp-json/wp/v2/media`.
 
 | Camp | Traduïble? | Gestionat actualment | Notes |
 |---|---|---|---|
-| `alt_text` | ✅ Sí | ⚠️ **Parcial** | Ja el capturem **quan la imatge està inserida al cos** (l'HTML renderitzat inclou `<img alt="...">` i `html_parser.py` ja ho extreu). **NO el capturem** per a la imatge destacada (`featured_media`), que no apareix al cos renderitzat. |
-| `caption.rendered` | ✅ Sí | ❌ **No** | Peu de foto — no capturat encara (poques imatges en tenen, però cal preveure-ho) |
+| `alt_text` | ✅ Sí | ✅ Sí | Al cos (via `html_parser.py`) i a la imatge destacada (via el paràmetre opcional `featured_media`, *2026-07-24*) |
+| `caption.rendered` | ✅ Sí | ✅ Parcial *(2026-07-24)* | Capturat per a la imatge destacada; les imatges dins del cos no porten peu de foto en HTML estàndard (només `alt`) |
 | `title.rendered` | ⚠️ Rarament visible | ❌ **No** | Títol intern de l'arxiu, gairebé mai visible al públic — prioritat baixa |
 | `description.rendered` | ⚠️ Rarament visible | ❌ **No** | Descripció interna de l'arxiu — prioritat baixa |
 
@@ -138,13 +138,16 @@ Idèntic a §2 (Yoast): els productes són `post_type=product` per sota, així q
 
 ---
 
-## Resum — accions pendents per a la propera iteració de FASE 3 (posts/pages)
+## Estat final (2026-07-24) — totes les accions de FASE 3 completades
 
-| Acció | Fitxer | Prioritat |
+| Acció | Fitxer | Estat |
 |---|---|---|
-| Afegir `excerpt.rendered` a l'extracció | `app/extraction/content_extractor.py` | Alta — és contingut visible real |
-| Afegir `og_title`/`og_description` de Yoast (posts/pages) | `app/extraction/seo_extractor.py` (ampliar `extract_yoast_blocks()`) | Mitjana |
-| Afegir alt/caption de la imatge destacada (`featured_media`) | `app/extraction/content_extractor.py` + nova crida a `get_media()` | Mitjana |
-| Afegir nom/descripció de categories i etiquetes (posts) | `content_extractor.py`, reutilitzant `extract_taxonomy_terms()` ja construït | Baixa/mitjana |
+| `excerpt.rendered` | `app/extraction/content_extractor.py` | ✅ Fet |
+| `og_title`/`og_description` de Yoast | `app/extraction/seo_extractor.py` | ✅ Fet (compartit amb WooCommerce) |
+| Alt/caption de la imatge destacada | `app/extraction/content_extractor.py` (paràmetre opcional `featured_media`) | ✅ Fet |
+| Nom/descripció de categories i etiquetes | `app/extraction/content_extractor.py` (paràmetres opcionals `categories`/`tags`) | ✅ Fet |
+| WooCommerce (productes) | `app/extraction/woocommerce_extractor.py` | ✅ Fet, pendent validació real |
 
-Aquestes accions **no depenen de WPML** i es poden fer en qualsevol moment. Es proposaran com a properes tasques si l'usuari ho confirma. (WooCommerce ja no hi apareix en aquesta llista — es va implementar el 2026-07-24, veure secció 6.)
+**Nota d'arquitectura important:** `extract_page_content()` es manté **pur i sense I/O** — `featured_media`/`categories`/`tags` són paràmetres opcionals que **qui crida** ha d'obtenir per separat (crides a `/wp-json/wp/v2/media/{id}` i `/wp-json/wp/v2/categories`/`tags`) i passar-hi ja resolts. Encara **no hi ha cap orquestrador** que faci aquestes crides automàticament — això és feina de FASE 8, bloquejada per WPML.
+
+Tot **provat contra dades reals de l'staging** (no només amb dades sintètiques): la pàgina "Precision Agriculture" (171 blocs amb excerpt+og+categories) i el post "RTK GNSS for Robotics" (78 blocs, amb la categoria "News" correctament filtrada als termes assignats).

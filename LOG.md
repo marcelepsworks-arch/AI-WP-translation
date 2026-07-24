@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-07-24 — FASE 3.5: tots els camps pendents de posts/pages, tancats
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari ("fes el que puguis que no depengui de WPML").
+
+**Fets:**
+
+1. Skill `writing-plans`/`executing-plans` → pla a `docs/superpowers/plans/2026-07-24-posts-pages-field-expansion.md` (5 tasques, TDD).
+2. `excerpt.rendered` afegit com a bloc traduïble a `content_extractor.py`.
+3. `seo_extractor.py` ampliat amb `og_title`/`og_description` — automàticament disponible també per a WooCommerce, ja que comparteix el mateix mòdul.
+4. `extract_page_content()` ampliada amb dos paràmetres **opcionals**, `featured_media` i `categories`/`tags`, que reben dades ja obtingudes pel qui crida (l'extracció es manté pura, sense fer cap crida HTTP ella mateixa) — coherent amb el disseny de la resta d'`app/extraction/`.
+5. **Validació contra dades reals de l'staging** (no només tests sintètics): la pàgina "Precision Agriculture" va passar de 164 a 171 blocs (excerpt + og_title + og_description + 4 categories del lloc); el post "RTK GNSS for Robotics", provat amb un flux realista (resoldre només els IDs de categoria assignats al post, no totes les categories del lloc), va extreure correctament la categoria "News".
+6. Suite completa: **164 tests, tots passant** (154 anteriors + 10 nous).
+7. `MAPEIG-CAMPS.md` i `PLA-ACCIO.md` actualitzats: **FASE 3 sencera (incloent-hi WooCommerce) ja completa.**
+
+**Resultat:** amb això es tanca tot el que es pot fer sense WPML instal·lat. El motor pot traduir, revisar, validar terminologia, detectar canvis, fer QA i extreure absolutament tot el contingut traduïble (posts, pages i productes WooCommerce) de qualsevol WordPress. L'únic que falta és la connexió final amb WordPress via WPML (FASES 1, 2.4, 8, 9).
+
+**Següent pas:** esperar que s'instal·li WPML a l'staging, o (si l'usuari ho vol) escriure l'esquelet PHP del `gnss-bridge` sense poder-lo provar encara.
+
+---
+
 ## 2026-07-24 — Implementació del motor d'extracció de productes WooCommerce
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari ("s'ha d'implementar per a altres WordPress amb WooCommerce").
