@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-07-24 — FASE 7: QA Engine
+
+**Fet per:** Claude (Claude Code), continuant "Fase 6 i 7" en la mateixa sessió.
+
+**Fets:**
+
+1. Skill `writing-plans`/`executing-plans` → pla a `docs/superpowers/plans/2026-07-24-qa-engine.md` (5 tasques, TDD).
+2. `app/qa/numerical_checker.py`: `check_numbers()`, provat literalment amb l'exemple del propi brief (secció 12.1): "1 cm accuracy" → "1 cm de precisión" PASS; → "2 cm de precisión" FAIL. Normalitza el separador decimal (`.`/`,`) perquè EN/ES no donin fals positiu.
+3. `app/qa/terminology_checker.py`: `check_protected_terms()` — termes protegits (GNSS, RTK, codis de producte) han de sobreviure literalment; sensible a majúscules expressament (un codi de producte en minúscules és un error).
+4. `app/qa/url_validator.py`: `check_urls()` — compara el conjunt d'URLs origen/traducció.
+5. `app/qa/scoring.py`: `score_translation()` combina els 3 checkers + el resultat ja existent de `DeepSeekClient.review()` (FASE 4.4, no duplicat) en una puntuació 0-100 amb els llindars exactes del brief secció 13. **Simplificació conscient documentada:** en lloc de les "5 dimensions" independents del brief (que requeririen dades reals per calibrar-les sense inventar-se-les), es combinen els 4 senyals que es poden mesurar mecànicament ara mateix.
+6. Suite completa: **136 tests, tots passant** (117 anteriors + 19 nous).
+7. `PLA-ACCIO.md` FASE 7 actualitzada (7.1/7.2/7.3/7.5/7.6/7.7 fets; 7.4 ajornat perquè no hi ha HTML real a validar encara).
+
+**Resultat:** amb FASES 4-7 fetes, el motor ja pot traduir, revisar, detectar canvis i puntuar automàticament una traducció — només falta l'orquestració completa (FASE 8) i la integració amb WordPress/WPML per publicar-ho de veritat, ambdues bloquejades fins tenir WPML instal·lat.
+
+**Següent pas:** amb FASES 4, 5, 6 i 7 fetes pel costat no-WPML, l'únic que queda raonablement per fer sense staging és el disseny/esquelet del mu-plugin `gnss-bridge` (FASE 1) sense desplegar-lo. La resta (FASE 2.4, 3.3, 8, 9) depenen totes de tenir WPML instal·lat a l'staging.
+
+---
+
 ## 2026-07-24 — FASE 6: Translation Memory i detecció de canvis
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari ("Fase 6 i 7").
