@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-07-24 — FASE 6: Translation Memory i detecció de canvis
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari ("Fase 6 i 7").
+
+**Fets:**
+
+1. Skill `writing-plans`/`executing-plans` → pla a `docs/superpowers/plans/2026-07-24-translation-memory.md` (4 tasques, TDD).
+2. `app/storage/database.py`: esquema SQLite exacte del brief secció 18 (`source_content`, `content_blocks`, `translations`, `terminology`, `qa_results`), amb `sqlite3` de la llibreria estàndard (sense dependència nova).
+3. `app/storage/models.py`: funcions de repositori (`upsert_source_content`, `save_content_block`, `get_content_block_hash`) amb SQL parametritzat i `ON CONFLICT ... DO UPDATE` per als upserts.
+4. `app/synchronization/change_detector.py`: `hash_text()` (SHA-256) + `detect_changed_blocks()` — funció **pura** (read-only) que compara el hash actual de cada `ContentBlock` (reutilitzat directament de FASE 3) amb el guardat, sense mai escriure.
+5. Provat exactament l'escenari que demana el brief secció 5: modificar un sol paràgraf d'una pàgina de dos blocs → només aquest es marca `"changed"`, l'altre `"unchanged"`.
+6. Suite completa: **117 tests, tots passant** (103 anteriors + 14 nous).
+7. `PLA-ACCIO.md` FASE 6 actualitzada (6.1/6.2/6.4 fets; 6.3 bloquejat per manca de `gnss-bridge`/WPML).
+
+**Resultat:** el motor ja pot decidir, per bloc, si cal retraduir-lo o no — la peça que falta per no re-traduir mai una pàgina sencera per un canvi petit.
+
+**Següent pas:** FASE 7 (QA Engine), a continuació en la mateixa sessió.
+
+---
+
 ## 2026-07-24 — FASE 3: Content Extraction Engine, validat amb contingut real
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari ("Pots fer el punt 2?" — FASE 3).

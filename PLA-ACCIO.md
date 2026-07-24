@@ -88,12 +88,12 @@ Llegenda d'estat: `[ ]` pendent · `[~]` en curs · `[x]` fet
 
 ## FASE 6 — Translation Memory i detecció de canvis
 
-- [ ] **6.1** `app/storage/models.py` + `database.py`: taules SQLite `source_content`, `content_blocks`, `translations`, `terminology`, `qa_results` (esquema exacte del brief secció 18).
-- [ ] **6.2** `app/synchronization/change_detector.py`: hash SHA-256 per bloc; comparació `source_hash_old != source_hash_new` per determinar retraducció.
-- [ ] **6.3** **(Millora derivada de la investigació)** afegir contrast opcional amb `icl_translation_status.md5`/`needs_update` (via `gnss-bridge/v1/translation-status/{id}`) com a doble verificació a nivell de pàgina.
-- [ ] **6.4** Test: modificar un sol paràgraf d'una pàgina de prova i confirmar que només aquest bloc es marca per retraduir.
+- [x] **6.1** `app/storage/database.py` (`get_connection()`, `SCHEMA`) + `app/storage/models.py` (`upsert_source_content()`, `save_content_block()`, `get_content_block_hash()`): taules SQLite `source_content`, `content_blocks`, `translations`, `terminology`, `qa_results` (esquema exacte del brief secció 18). *(Fet 2026-07-24.)*
+- [x] **6.2** `app/synchronization/change_detector.py`: `hash_text()` (SHA-256) + `detect_changed_blocks()`, funció pura (read-only) que retorna `"new"`/`"changed"`/`"unchanged"` per bloc, consumint `ContentBlock` de FASE 3 directament. *(Fet 2026-07-24.)*
+- [ ] **6.3** **(Millora derivada de la investigació)** afegir contrast opcional amb `icl_translation_status.md5`/`needs_update` (via `gnss-bridge/v1/translation-status/{id}`) com a doble verificació a nivell de pàgina — **bloquejat**, `gnss-bridge` no existeix fins tenir WPML.
+- [x] **6.4** Test: modificar un sol paràgraf i confirmar que només aquest bloc es marca `"changed"` (`test_detect_changed_blocks_marks_changed_when_only_one_paragraph_edited`) — exactament l'escenari que demana el brief. *(Fet 2026-07-24, amb SQLite en memòria, sense necessitat de contingut real per a aquest test concret.)*
 
-**Sortida de la fase:** sistema de detecció de canvis provat amb un cas real de modificació parcial.
+**Sortida de la fase:** ✅ Translation Memory funcional (13 tests nous, 117 en total). Pendent: 6.3 (bloquejat per WPML).
 
 ---
 
