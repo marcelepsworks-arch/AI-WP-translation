@@ -64,9 +64,9 @@ Auditat contra `wp-json/wp/v2/media`.
 
 Ja documentat a `AUDITORIA-INICIAL.md` §0.5 i confirmat de nou en aquesta auditoria: **no s'exposa via REST per defecte**. El nostre `html_parser.py` treballa sobre l'HTML ja renderitzat (que Elementor mateix genera), no sobre el JSON cru — per això capturem el contingut visible igualment, però **no captura configuracions no renderitzades com a text** (per exemple, un atribut `title` d'un botó que no es mostra al DOM, si n'hi hagués).
 
-## 6. WooCommerce / Productes — **no aplicable en aquest lloc, però mapejat sencer per si cal**
+## 6. WooCommerce / Productes — **implementat de forma genèrica (2026-07-24), pendent de validació real**
 
-Confirmat a `AUDITORIA-INICIAL.md`: **cap plugin de WooCommerce instal·lat, cap post type `product`** a `precision-gnss.com`. Com que no hi ha cap lloc real amb WooCommerce dins l'abast actual, **aquesta secció no s'ha pogut auditar empíricament** (a diferència de les seccions 1-5, fetes contra dades reals) — es basa en l'esquema oficial i estable de l'API REST de WooCommerce (`wp-json/wc/v3/products`, diferent de `wp/v2`). Es documenta sencer ara perquè, si el projecte s'estén mai a un lloc amb botiga (p. ex. una futura versió per a ArduSimple.com — veure `MEMORIA.md`), no calgui redescobrir-ho.
+Confirmat a `AUDITORIA-INICIAL.md`: **cap plugin de WooCommerce instal·lat, cap post type `product`** a `precision-gnss.com`. A petició explícita de l'usuari ("s'ha d'implementar per a altres WordPress amb WooCommerce"), aquesta secció ja **té codi funcional** (`app/extraction/woocommerce_extractor.py`), pensat per funcionar amb **qualsevol** WordPress+WooCommerce, no només un lloc concret. Com que no hi ha cap lloc real amb WooCommerce dins l'abast actual, **el codi s'ha provat amb dades sintètiques fidels a l'esquema oficial** (`wp-json/wc/v3/products`), no contra un lloc real — es marca per a validació empírica quan n'hi hagi un de disponible (p. ex. una futura versió per a ArduSimple.com — veure `MEMORIA.md`).
 
 ### 6.1 Contingut principal del producte
 
@@ -120,27 +120,31 @@ Idèntic a §2 (Yoast): els productes són `post_type=product` per sota, així q
 
 `sku`, `price`, `regular_price`, `sale_price`, `stock_quantity`, `stock_status`, `weight`, `dimensions` (length/width/height), `download_url` dels fitxers descarregables, `variations[].sku`/`.price`. El **nom** d'un fitxer descarregable (`downloads[].name`, l'etiqueta que veu l'usuari, p. ex. "Manual d'usuari (PDF)") sí és traduïble; la seva URL no.
 
-### 6.8 Resum de prioritats (si mai s'implementa)
+### 6.8 Estat d'implementació
 
-| Prioritat | Camps |
-|---|---|
-| Alta | `name`, `description`, `short_description`, `attributes` (noms i valors), imatges (alt) |
-| Mitjana | `purchase_note`, categories/etiquetes/marca, SEO (igual que posts/pages) |
-| Baixa / cas per cas | Tabs personalitzats (cal inventariar-los al lloc real primer) |
-| **Explícitament fora d'abast** | Reviews/ressenyes d'usuaris |
+| Camp/element | Gestionat pel motor | Fitxer |
+|---|---|---|
+| `name`, `description`, `short_description`, `purchase_note` | ✅ Sí (`extract_product_content()`) | `app/extraction/woocommerce_extractor.py` |
+| `attributes[].name` / `.options[]` | ✅ Sí | íd. |
+| `images[].alt` (galeria sencera) | ✅ Sí | íd. |
+| `categories[].name`/`.description`, `tags[].name` | ✅ Sí (via `extract_taxonomy_terms()`, genèric i reutilitzat) | `app/extraction/taxonomy_extractor.py` |
+| SEO (Yoast) | ✅ Sí (via `extract_yoast_blocks()`, genèric i reutilitzat amb posts/pages) | `app/extraction/seo_extractor.py` |
+| Tabs personalitzats de plugins | ❌ No — impossible de fer genèric sense un lloc real per inventariar-los | — |
+| `variations[].description` per variant | ❌ No — cas rar, s'afegirà si un lloc real ho necessita | — |
+| Reviews/ressenyes d'usuaris | ❌ **Explícitament fora d'abast** (contingut de tercers) | — |
+| Camps mai traduïbles (SKU, preus, estoc...) | ✅ Mai extrets (provat amb test dedicat) | — |
 
-Aquesta secció sencera es reprendrà **només si el projecte s'amplia formalment a un lloc amb WooCommerce** (fora d'abast actual, confirmat a `MEMORIA.md`) — en aquell moment caldrà **validar-la empíricament** contra el lloc real, igual que s'ha fet amb les seccions 1-5 aquí.
+**Provat amb 10 tests** i dades sintètiques fidels a l'esquema oficial (`tests/extraction/test_woocommerce_extractor.py`) — **no encara amb un lloc WooCommerce real**, ja que cap n'hi ha dins l'abast actual. Es marca per a validació empírica quan n'hi hagi un de disponible.
 
 ---
 
-## Resum — accions pendents per a la propera iteració de FASE 3
+## Resum — accions pendents per a la propera iteració de FASE 3 (posts/pages)
 
 | Acció | Fitxer | Prioritat |
 |---|---|---|
 | Afegir `excerpt.rendered` a l'extracció | `app/extraction/content_extractor.py` | Alta — és contingut visible real |
-| Afegir `og_title`/`og_description` de Yoast | `app/extraction/content_extractor.py` | Mitjana — sovint duplicat de title/description, però no sempre |
+| Afegir `og_title`/`og_description` de Yoast (posts/pages) | `app/extraction/seo_extractor.py` (ampliar `extract_yoast_blocks()`) | Mitjana |
 | Afegir alt/caption de la imatge destacada (`featured_media`) | `app/extraction/content_extractor.py` + nova crida a `get_media()` | Mitjana |
-| Afegir nom/descripció de categories i etiquetes | Nou: `app/wordpress/taxonomies.py` + extractor | Baixa/mitjana |
-| Camps de WooCommerce | — | **Fora d'abast** fins que s'ampliï el projecte |
+| Afegir nom/descripció de categories i etiquetes (posts) | `content_extractor.py`, reutilitzant `extract_taxonomy_terms()` ja construït | Baixa/mitjana |
 
-Aquestes accions **no depenen de WPML** i es poden fer en qualsevol moment. Es proposaran com a properes tasques si l'usuari ho confirma.
+Aquestes accions **no depenen de WPML** i es poden fer en qualsevol moment. Es proposaran com a properes tasques si l'usuari ho confirma. (WooCommerce ja no hi apareix en aquesta llista — es va implementar el 2026-07-24, veure secció 6.)

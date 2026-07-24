@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-07-24 — Implementació del motor d'extracció de productes WooCommerce
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari ("s'ha d'implementar per a altres WordPress amb WooCommerce").
+
+**Fets:**
+
+1. Actualitzat `MEMORIA.md`: canvi d'abast explícit — el suport a WooCommerce ja no és "possible reutilització futura sense construir", sinó una **capacitat genèrica implementada ara**, pensada per a qualsevol WordPress+WooCommerce (no `precision-gnss.com`, que confirmadament no en té).
+2. Skill `writing-plans`/`executing-plans` → pla a `docs/superpowers/plans/2026-07-24-woocommerce-extraction.md` (4 tasques, TDD).
+3. `app/extraction/taxonomy_extractor.py` (`extract_taxonomy_terms()`): extractor **genèric** de termes de taxonomia (categories/etiquetes), reutilitzable tant per productes com per posts/pages en el futur (FASE 3.5).
+4. **Refactor DRY**: la lògica de blocs Yoast, fins ara duplicada dins `content_extractor.py`, s'ha extret a `app/extraction/seo_extractor.py` (`extract_yoast_blocks()`) — provat que el refactor no trenca cap dels 5 tests existents de `content_extractor.py` abans de continuar.
+5. `app/extraction/woocommerce_extractor.py` (`extract_product_content()`): nom, descripció llarga/curta (reutilitzant `extract_blocks()`, ja que les descripcions de WooCommerce són HTML WYSIWYG igual que el cos d'un post), nota de compra, atributs/opcions, alt d'imatges de galeria, categories/etiquetes, SEO. **Mai extreu** SKU/preus/estoc/pes/dimensions (provat amb test dedicat).
+6. Suite completa: **154 tests, tots passant** (136 anteriors + 18 nous).
+7. Actualitzats `MAPEIG-CAMPS.md` (secció 6 passa d'"a fer" a "implementat, pendent validació real") i `PLA-ACCIO.md` (nova tasca 3.6).
+
+**Resultat:** el motor ja pot extreure contingut traduïble de productes WooCommerce de qualsevol lloc que en tingui, tot i que **encara no s'ha pogut validar contra un lloc real** (cap dins l'abast actual) — es prova amb dades sintètiques fidels a l'esquema oficial de l'API.
+
+**Següent pas:** aplicar el mateix patró (`extract_taxonomy_terms()`, camps pendents) a posts/pages (FASE 3.5), o esperar un lloc WooCommerce real per validar-ho empíricament.
+
+---
+
 ## 2026-07-24 — Ampliació del mapeig de camps WooCommerce (tabs, atributs, variants)
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari ("has valorat també tot el que representen els camps de productes: descripció, tabs, contingut, etc.?").

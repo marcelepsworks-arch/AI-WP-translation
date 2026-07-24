@@ -11,7 +11,8 @@
 - **Motor de traducció:** DeepSeek API.
 - **Entorn de desenvolupament:** un **staging de la pròpia web** precision-gnss.com (no es desenvolupa directament contra producció). Producció és WordPress + WPML (llicència de pagament) + Elementor.
 - **Focus del contingut a traduir:** **el contingut (posts/pages/CPTs/Elementor), no el tema.** Les strings de tema/plugins (allò que gestiona `icl_strings`/String Translation — textos fixos del theme, labels de plugins, etc.) **queden fora de l'abast prioritari**; l'objectiu és el contingut editorial real del lloc.
-- **Possible reutilització futura:** ArduSimple (mencionat al brief original, secció 24) — **no forma part de l'abast actual**, només s'anota aquí per no perdre'n la traça si en el futur es reprèn.
+- **Possible reutilització futura:** ArduSimple (mencionat al brief original, secció 24) — només s'anota aquí per no perdre'n la traça.
+- **2026-07-24 — Canvi d'abast:** l'usuari ha demanat implementar suport a **WooCommerce per a altres llocs WordPress** (no `precision-gnss.com`, que confirmadament no en té). El motor d'extracció de productes es construeix com a **capacitat genèrica i reutilitzable**, basada en l'esquema estable de `wc/v3/products`, no lligada a cap lloc concret — vàlid per a qualsevol WordPress+WooCommerce futur (p. ex. ArduSimple). **No es pot validar empíricament ara** (cap lloc WooCommerce dins l'abast actual per fer-hi proves reals); es documenta i es prova amb dades sintètiques fidels a l'esquema oficial, i es marca per a validació real quan hi hagi un lloc real disponible.
 - **Document font:** `brief_gnss_translation_engine_precision_gnss.pdf`, aportat pel client/usuari amb l'arquitectura, prompts, esquema de BD i roadmap inicials.
 
 ## Decisions clau preses
