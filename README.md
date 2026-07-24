@@ -93,6 +93,7 @@ Full methodology and page-by-page figures: [`docs/reports/executive-summary-2026
 | **Glossary Engine** (`app/translation/glossary.py`) | Loads domain terminology from JSON, sends only the subset relevant to each text (keeps prompts small), plus a free local check for obviously missing mandatory terms |
 | **Chunking** (`app/translation/chunking.py`) | Splits long content at paragraph/sentence boundaries — never mid-number or mid-term — and reassembles translated chunks |
 | **Content Extraction** (`app/extraction/`) | Walks rendered WordPress/Elementor HTML into semantic blocks (headings, paragraphs, lists, CTAs, alt text, SEO fields), explicitly protecting URLs, emails, and shortcodes from translation |
+| **WooCommerce Product Extraction** (`app/extraction/woocommerce_extractor.py`) | Generic — works against any WordPress + WooCommerce site, not just this one. Extracts product name, long/short description, purchase note, attributes/options, gallery image alt text, categories/tags, and SEO. Never extracts SKU, price, stock, weight, or dimensions. Not yet validated against a live WooCommerce site (none in scope) — built and tested against the official `wc/v3/products` schema. |
 | **WordPress Connector** (`app/wordpress/`) | Reads posts/pages/meta over the REST API, with dual auth (staging Basic Auth gate + WordPress Application Password) and automatic retry on 429/503 |
 | **Translation Memory** (`app/storage/`, `app/synchronization/`) | SQLite-backed content-hash fingerprinting; detects new/changed/unchanged per block so only edited content is ever re-translated |
 | **QA Engine** (`app/qa/`) | Numeric consistency, protected-term survival, and URL-preservation checks, combined with the Reviewer's verdict into a 0–100 score and an `auto_approve` / `human_review` / `reject` decision |
@@ -115,7 +116,7 @@ Full methodology and page-by-page figures: [`docs/reports/executive-summary-2026
 | 9 | Pilot on 5 real pages | 🔴 Blocked — needs WPML |
 | 10 | Scale-out & scheduled sync | ⚪ Not started |
 
-**136 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md).
+**154 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md).
 
 ---
 
@@ -151,7 +152,7 @@ app/
 ├── synchronization/     # Change detection
 └── qa/                    # Automated quality checks and scoring
 
-tests/            # Mirrors app/, 136 tests, no live API/network calls
+tests/            # Mirrors app/, 154 tests, no live API/network calls
 scripts/          # Manual smoke tests against the real DeepSeek API / staging site
 docs/             # Implementation plans, executive summary reports
 ```
