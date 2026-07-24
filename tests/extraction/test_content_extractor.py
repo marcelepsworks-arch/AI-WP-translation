@@ -6,6 +6,7 @@ def _sample_page(**overrides):
         "id": 4309,
         "title": {"rendered": "Precision Agriculture"},
         "content": {"rendered": "<h2>Steering</h2><p>RTK improves steering accuracy.</p>"},
+        "excerpt": {"rendered": ""},
     }
     page.update(overrides)
     return page
@@ -53,3 +54,33 @@ def test_extract_page_content_uses_page_id_as_default_prefix():
     blocks = extract_page_content(_sample_page())
 
     assert blocks[0].content_id == "page_4309_title"
+
+
+def test_extract_page_content_includes_excerpt_when_present():
+    page = _sample_page(excerpt={"rendered": "<p>A short summary of the page.</p>"})
+
+    blocks = extract_page_content(page, id_prefix="page_4309")
+
+    excerpt_blocks = [b for b in blocks if b.type == "excerpt"]
+    assert len(excerpt_blocks) == 1
+    assert excerpt_blocks[0].source == "A short summary of the page."
+    assert excerpt_blocks[0].content_id == "page_4309_excerpt"
+
+
+def test_extract_page_content_skips_excerpt_when_absent_or_empty():
+    page = _sample_page(excerpt={"rendered": ""})
+
+    blocks = extract_page_content(page)
+
+    assert [b for b in blocks if b.type == "excerpt"] == []
+
+
+def test_extract_page_content_works_without_excerpt_key_at_all():
+    # Real WP REST responses always include "excerpt", but extraction
+    # must not crash if a caller hands it a partial dict (e.g. in tests).
+    page = _sample_page()
+    del page["excerpt"]
+
+    blocks = extract_page_content(page)
+
+    assert [b for b in blocks if b.type == "excerpt"] == []

@@ -1,8 +1,10 @@
 """Orchestrates extraction of all translatable blocks from one
-WordPress REST API page/post dict: title, SEO fields (when exposed),
-and the parsed body.
+WordPress REST API page/post dict: title, excerpt, SEO fields (when
+exposed), and the parsed body.
 """
 from __future__ import annotations
+
+from bs4 import BeautifulSoup
 
 from app.extraction.html_parser import extract_blocks
 from app.extraction.protected_content import is_protected_content
@@ -23,6 +25,19 @@ def extract_page_content(page: dict, id_prefix: str | None = None) -> list[Conte
                 context="",
                 source=title,
                 translate=not is_protected_content(title),
+            )
+        )
+
+    excerpt_html = page.get("excerpt", {}).get("rendered", "")
+    excerpt_text = BeautifulSoup(excerpt_html, "html.parser").get_text(separator=" ", strip=True)
+    if excerpt_text:
+        blocks.append(
+            ContentBlock(
+                content_id=f"{prefix}_excerpt",
+                type="excerpt",
+                context=title,
+                source=excerpt_text,
+                translate=not is_protected_content(excerpt_text),
             )
         )
 
