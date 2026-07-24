@@ -7,6 +7,7 @@ from __future__ import annotations
 from app.extraction.html_parser import extract_blocks
 from app.extraction.protected_content import is_protected_content
 from app.extraction.schemas import ContentBlock
+from app.extraction.seo_extractor import extract_yoast_blocks
 
 
 def extract_page_content(page: dict, id_prefix: str | None = None) -> list[ContentBlock]:
@@ -25,30 +26,7 @@ def extract_page_content(page: dict, id_prefix: str | None = None) -> list[Conte
             )
         )
 
-    yoast = page.get("yoast_head_json")
-    if yoast:
-        seo_title = (yoast.get("title") or "").strip()
-        if seo_title:
-            blocks.append(
-                ContentBlock(
-                    content_id=f"{prefix}_seo_title",
-                    type="seo_title",
-                    context=title,
-                    source=seo_title,
-                    translate=not is_protected_content(seo_title),
-                )
-            )
-        seo_description = (yoast.get("description") or "").strip()
-        if seo_description:
-            blocks.append(
-                ContentBlock(
-                    content_id=f"{prefix}_seo_description",
-                    type="seo_description",
-                    context=title,
-                    source=seo_description,
-                    translate=not is_protected_content(seo_description),
-                )
-            )
+    blocks.extend(extract_yoast_blocks(page.get("yoast_head_json"), id_prefix=prefix, context=title))
 
     body_html = page["content"]["rendered"]
     blocks.extend(extract_blocks(body_html, id_prefix=prefix))
