@@ -4,6 +4,36 @@
 
 ---
 
+## 2026-07-24 — Auditoria completa de camps WordPress/Yoast/Media/Taxonomies
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari ("el sistema ha de poder mapejar tots els camps de WordPress... ja els tens tots detectats?").
+
+**Fets:**
+
+1. Resposta honesta: **no**, fins ara només gestionàvem títol, cos i 2 camps de Yoast. Es fa una auditoria real contra l'staging per tancar el buit.
+2. Inspecció completa via REST API d'una pàgina (Precision Agriculture) i un post: tots els camps de primer nivell, els 9 camps de `yoast_head_json` (no només title/description — falten `og_title`/`og_description`), l'`excerpt` (existeix i no es capturava), `featured_media` (necessita crida separada a l'endpoint de media), taxonomies de posts (`category`/`post_tag`, 4 categories reals), i camps de la mediateca (`alt_text`, `caption`, `title`, `description`).
+3. Confirmat que `schema` (JSON-LD de Yoast) és **derivat** dinàmicament del title/description — no cal gestionar-lo per separat.
+4. Confirmat de nou que **no hi ha WooCommerce/productes** en aquest lloc; documentats els camps que caldria mapejar (`wp-json/wc/v3/products`) només com a referència per a una futura ampliació (ArduSimple), sense construir-ho ara.
+5. Creat `MAPEIG-CAMPS.md` amb la taula completa camp-per-camp, estat actual, i una llista d'accions pendents priolitzades per a la propera iteració de FASE 3 (afegir `excerpt`, `og_title`/`og_description`, alt/caption d'imatge destacada, noms/descripcions de categories).
+
+**Resultat:** buit de cobertura identificat i documentat amb precisió; cap codi nou encara (l'usuari no ho ha demanat explícitament, només el mapeig).
+
+**Següent pas:** esperar confirmació de l'usuari per implementar les accions pendents de `MAPEIG-CAMPS.md` (no depenen de WPML, es poden fer ara).
+
+---
+
+## 2026-07-24 — README.md (presentació del sistema a GitHub, en anglès)
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari.
+
+**Fets:** creat `README.md` (anglès) amb filosofia del projecte, diagrames Mermaid (arquitectura + pipeline de traducció), taula de decisions de disseny amb el "per què", anàlisi de costos real (reutilitzant les dades empíriques ja calculades), taula de funcionalitats, estat del projecte per fase, i instruccions d'instal·lació/ús. Confirmat que la convenció de missatges de commit en anglès ja s'havia seguit consistentment durant tota la sessió (verificat contra els últims 20 commits) — sense canvis necessaris, només es manté endavant.
+
+**Resultat:** el repositori ja té una pàgina de presentació completa a GitHub.
+
+**Següent pas:** el mateix que abans — esquelet del `gnss-bridge` o esperar WPML.
+
+---
+
 ## 2026-07-24 — FASE 7: QA Engine
 
 **Fet per:** Claude (Claude Code), continuant "Fase 6 i 7" en la mateixa sessió.

@@ -58,7 +58,7 @@ Llegenda d'estat: `[ ]` pendent · `[~]` en curs · `[x]` fet
 
 **Sortida de la fase:** ✅ Content Extraction Engine funcional i validat amb contingut real (27 tests nous, 103 en total al projecte). Pendent: 3.3 (bloquejat, sense objecte fins tenir `_elementor_data` accessible).
 
-**Sortida de la fase:** extractor que separa correctament traduïble/protegit a les pàgines de prova, verificat manualment bloc a bloc en almenys 2 pàgines.
+- [ ] **3.5** *(Nou, 2026-07-24)* Ampliar `extract_page_content()` amb els camps detectats a `MAPEIG-CAMPS.md` però encara no coberts: `excerpt.rendered`, `og_title`/`og_description` de Yoast, alt/caption de la imatge destacada (`featured_media`), i nom/descripció de categories i etiquetes (`app/wordpress/taxonomies.py`, nou). No depèn de WPML.
 
 ---
 
