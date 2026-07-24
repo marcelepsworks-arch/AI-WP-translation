@@ -64,18 +64,72 @@ Auditat contra `wp-json/wp/v2/media`.
 
 Ja documentat a `AUDITORIA-INICIAL.md` §0.5 i confirmat de nou en aquesta auditoria: **no s'exposa via REST per defecte**. El nostre `html_parser.py` treballa sobre l'HTML ja renderitzat (que Elementor mateix genera), no sobre el JSON cru — per això capturem el contingut visible igualment, però **no captura configuracions no renderitzades com a text** (per exemple, un atribut `title` d'un botó que no es mostra al DOM, si n'hi hagués).
 
-## 6. WooCommerce / Productes — **no aplicable en aquest lloc**
+## 6. WooCommerce / Productes — **no aplicable en aquest lloc, però mapejat sencer per si cal**
 
-Confirmat a `AUDITORIA-INICIAL.md`: **cap plugin de WooCommerce instal·lat, cap post type `product`**. Aquesta secció es deixa documentada només com a referència per si el projecte s'estén mai a un lloc amb botiga (per exemple, una futura versió per a ArduSimple.com, que sí té WooCommerce — veure `MEMORIA.md`).
+Confirmat a `AUDITORIA-INICIAL.md`: **cap plugin de WooCommerce instal·lat, cap post type `product`** a `precision-gnss.com`. Com que no hi ha cap lloc real amb WooCommerce dins l'abast actual, **aquesta secció no s'ha pogut auditar empíricament** (a diferència de les seccions 1-5, fetes contra dades reals) — es basa en l'esquema oficial i estable de l'API REST de WooCommerce (`wp-json/wc/v3/products`, diferent de `wp/v2`). Es documenta sencer ara perquè, si el projecte s'estén mai a un lloc amb botiga (p. ex. una futura versió per a ArduSimple.com — veure `MEMORIA.md`), no calgui redescobrir-ho.
 
-Si mai calgués, els camps typical de WooCommerce a mapejar via `wp-json/wc/v3/products` (API pròpia de WooCommerce, no `wp/v2`) serien:
-- `name`, `description`, `short_description` (contingut principal, traduïble)
-- `attributes[].name` / `attributes[].options[]` (atributs de variants, p. ex. "Color: Vermell")
-- `categories[].name` / `.description`
-- Meta de Yoast (mateix mecanisme que posts/pages)
-- **Mai traduïbles:** `sku`, `price`, `regular_price`, `stock_quantity`, `weight`, `dimensions`
+### 6.1 Contingut principal del producte
 
-Aquesta llista es reprendrà **només si el projecte s'amplia formalment a un lloc amb WooCommerce** (fora d'abast actual, confirmat a `MEMORIA.md`).
+| Camp | Traduïble? | Correspon a |
+|---|---|---|
+| `name` | ✅ Sí | Títol del producte |
+| `description` | ✅ Sí | **Tab "Description"** — contingut llarg en HTML (WYSIWYG), sovint amb imatges/taules incrustades |
+| `short_description` | ✅ Sí | Resum breu que apareix al costat del botó "Afegir a la cistella" |
+| `purchase_note` | ✅ Sí | Text mostrat després de completar la compra (p. ex. instruccions de descàrrega/activació) |
+| `menu_order` | ❌ No | Ordre de visualització, no textual |
+
+### 6.2 Tabs de la fitxa de producte (plantilla estàndard de WooCommerce)
+
+WooCommerce mostra per defecte 2-3 pestanyes a la fitxa; una quarta és habitual amb plugins:
+
+| Tab | Origen del contingut | Traduïble? |
+|---|---|---|
+| **Description** | Camp `description` (§6.1) | ✅ Sí — ja cobert si es tradueix `description` |
+| **Additional information** | **Generada automàticament** per WooCommerce a partir de `attributes[]` (mida, pes, dimensions) i dels atributs personalitzats (Color, Voltatge, etc.) | ✅ Sí, però indirecte — cal traduir els **noms i valors dels atributs** (§6.3), no aquest "tab" en si, que és només una taula auto-generada |
+| **Reviews** | Contingut generat pels usuaris (ressenyes/valoracions) | ⚠️ **Normalment fora d'abast** — és contingut de tercers, no editorial del propietari del lloc; traduir-lo automàticament seria qüestionable (canviaria paraules d'un client real). Es recomana **no traduir-lo automàticament**; si es vol, seria un flux completament separat amb consideracions ètiques pròpies. |
+| **Tabs personalitzats** (afegits per tema/plugin, p. ex. "Especificacions tècniques", "Descàrregues") | Normalment `meta_data` propi del plugin que afegeix el tab — **no formen part de l'esquema estàndard de WooCommerce** | ✅ Sí, però **cal inventariar-los al lloc real** quan existeixi, perquè cada plugin guarda el contingut d'una manera diferent (custom meta key, shortcode, camp ACF...) |
+
+### 6.3 Atributs i variants (productes variables — p. ex. "Color: Vermell / Blau", "Mida: S / M / L")
+
+| Camp | Traduïble? | Notes |
+|---|---|---|
+| `attributes[].name` | ✅ Sí | Nom de l'atribut (p. ex. "Color", "Longitud del cable") |
+| `attributes[].options[]` | ✅ Sí | Valors de l'atribut (p. ex. "Vermell", "1.5 m") — **sensible**: si l'atribut és un "atribut global" (`pa_color`, gestionat com a taxonomia pròpia `product_attribute`), el valor es tradueix com un terme de taxonomia (secció 3), no com a text lliure dins del producte |
+| `variations[].description` | ✅ Sí | Cada variant pot tenir la seva pròpia descripció (poc habitual però possible) |
+| `variations[].sku`, `.price`, `.stock_quantity` | ❌ No | Igual que al producte pare — mai traduïbles |
+
+### 6.4 Categories, etiquetes i taxonomies pròpies
+
+| Element | Traduïble? |
+|---|---|
+| `categories[].name` / `.description` | ✅ Sí (mateix mecanisme que §3, però és la taxonomia `product_cat`) |
+| `tags[].name` | ✅ Sí (`product_tag`) |
+| Taxonomies personalitzades (p. ex. "Marca" / `product_brand`, habitual amb plugins de marca) | ✅ Sí, si n'hi ha — cal inventariar-les al lloc real |
+
+### 6.5 Imatges del producte
+
+| Camp | Traduïble? |
+|---|---|
+| `images[].alt` (imatge destacada + galeria sencera) | ✅ Sí — mateix mecanisme que §4 (media), però un producte sol tenir **diverses** imatges de galeria, no només una destacada |
+
+### 6.6 SEO
+
+Idèntic a §2 (Yoast): els productes són `post_type=product` per sota, així que Yoast els tracta igual (`title`, `description`, `og_title`, `og_description`, `schema` derivat).
+
+### 6.7 Camps que **mai** s'han de traduir (contingut protegit)
+
+`sku`, `price`, `regular_price`, `sale_price`, `stock_quantity`, `stock_status`, `weight`, `dimensions` (length/width/height), `download_url` dels fitxers descarregables, `variations[].sku`/`.price`. El **nom** d'un fitxer descarregable (`downloads[].name`, l'etiqueta que veu l'usuari, p. ex. "Manual d'usuari (PDF)") sí és traduïble; la seva URL no.
+
+### 6.8 Resum de prioritats (si mai s'implementa)
+
+| Prioritat | Camps |
+|---|---|
+| Alta | `name`, `description`, `short_description`, `attributes` (noms i valors), imatges (alt) |
+| Mitjana | `purchase_note`, categories/etiquetes/marca, SEO (igual que posts/pages) |
+| Baixa / cas per cas | Tabs personalitzats (cal inventariar-los al lloc real primer) |
+| **Explícitament fora d'abast** | Reviews/ressenyes d'usuaris |
+
+Aquesta secció sencera es reprendrà **només si el projecte s'amplia formalment a un lloc amb WooCommerce** (fora d'abast actual, confirmat a `MEMORIA.md`) — en aquell moment caldrà **validar-la empíricament** contra el lloc real, igual que s'ha fet amb les seccions 1-5 aquí.
 
 ---
 
