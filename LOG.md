@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-07-24 — Ampliació del mapeig de camps WooCommerce (tabs, atributs, variants)
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari ("has valorat també tot el que representen els camps de productes: descripció, tabs, contingut, etc.?").
+
+**Fets:** la secció 6 de `MAPEIG-CAMPS.md` només llistava 3-4 camps de nivell superior. Ampliada amb: els tabs estàndard de la fitxa de producte (Description/Additional Information — auto-generat/Reviews — recomanat fora d'abast per ser contingut d'usuari/tabs personalitzats de plugins — cal inventariar-los al lloc real), atributs i variants de producte, categories/etiquetes/marca, galeria d'imatges, paritat amb Yoast SEO, i la llista de camps que mai s'han de traduir. **Deixat explícit que aquesta secció no s'ha pogut validar empíricament** (a diferència de les seccions 1-5) perquè no hi ha cap WooCommerce real dins l'abast — es basa en l'esquema oficial i estable de `wc/v3/products`.
+
+**Resultat:** mapeig de productes ara complet a nivell de disseny, pendent de validació real si el projecte s'amplia mai a un lloc amb botiga.
+
+**Següent pas:** esperar confirmació de l'usuari per implementar les accions pendents de posts/pages ja identificades (`excerpt`, `og_title`/`og_description`, imatge destacada, categories) — el treball de WooCommerce queda com a referència, no com a tasca activa.
+
+---
+
 ## 2026-07-24 — Auditoria completa de camps WordPress/Yoast/Media/Taxonomies
 
 **Fet per:** Claude (Claude Code), a petició de l'usuari ("el sistema ha de poder mapejar tots els camps de WordPress... ja els tens tots detectats?").
