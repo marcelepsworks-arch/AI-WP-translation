@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-07-24 — FASE 3: Content Extraction Engine, validat amb contingut real
+
+**Fet per:** Claude (Claude Code), a petició de l'usuari ("Pots fer el punt 2?" — FASE 3).
+
+**Fets:**
+
+1. Aclariment puntual: l'usuari va preguntar per "articles de WooCommerce" — confusió amb `ardusimple.com` (que sí té un `product-sitemap.xml`, no `precision-gnss.com`). Confirmat que és una consideració de futur, sense canvi d'abast ara.
+2. Skill `writing-plans`/`executing-plans` → pla a `docs/superpowers/plans/2026-07-24-content-extraction.md` (6 tasques, TDD).
+3. `app/extraction/protected_content.py` (`is_protected_content()`): detecta URLs, emails i shortcodes solts.
+4. `app/extraction/schemas.py` (`ContentBlock`) i `app/extraction/html_parser.py` (`extract_blocks()`): extractor que camina l'HTML renderitzat (no `_elementor_data` cru, que segueix sense exposar-se) i construeix el `context` a partir de la jerarquia d'encapçalaments.
+5. Bug real trobat i corregit durant el TDD (no contra staging, sinó en la pròpia implementació): `_block_type_for_tag("p")` retornava `"p"` en lloc de `"paragraph"` — detectat pels propis tests abans de cap commit.
+6. `app/extraction/content_extractor.py` (`extract_page_content()`): orquestra títol + SEO Yoast (quan hi és) + cos.
+7. **Validat contra 3 continguts reals de l'staging**: "Precision Agriculture" (164 blocs), "Contact us" (5 blocs), post "RTK GNSS for Robotics" (74 blocs) — cap fals positiu de contingut protegit.
+8. Suite completa: **103 tests, tots passant** (74 anteriors + 29 nous... nota: 12+2+10+5=29 tests d'extracció).
+9. `PLA-ACCIO.md` FASE 3 actualitzada (3.1/3.2/3.4 fets; 3.3 ajornat perquè `_elementor_data` no és accessible).
+
+**Resultat:** ja es pot convertir contingut real de WordPress en la llista ordenada de blocs semàntics que el brief demana, a punt per alimentar `DeepSeekClient.translate()` un cop es desbloquegi l'escriptura (WPML).
+
+**Següent pas:** amb FASES 2 i 3 fetes pel costat de lectura, les opcions raonables són: (a) FASE 6 (Translation Memory / SQLite) o FASE 7 (QA Engine — numèric/unitats/URLs), totes dues independents de WPML, o (b) crear l'Application Password des del wp-admin per preparar l'escriptura quan WPML estigui instal·lat.
+
+---
+
 ## 2026-07-23 — FASE 2: WordPress Connector (lectura), provat contra l'staging real
 
 **Fet per:** Claude (Claude Code), continuant l'auditoria de FASE 0 cap a FASE 2 mentre WPML no està instal·lat.

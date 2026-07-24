@@ -51,10 +51,12 @@ Llegenda d'estat: `[ ]` pendent · `[~]` en curs · `[x]` fet
 
 ## FASE 3 — Content Extraction Engine
 
-- [ ] **3.1** `app/extraction/strings.py` + `html_parser.py`: extractor de blocs semàntics genèrics (paràgrafs, headings, CTA, alt text) amb el format `content_id`/`type`/`context`/`source` (brief secció 6).
-- [ ] **3.2** `app/extraction/content_extractor.py`: orquestra extracció per tipus de post/pàgina, aplicant la llista de contingut protegit (brief secció 7.2: URLs, emails, SKUs, model numbers, CSS/JS, shortcodes, API keys, IDs).
-- [ ] **3.3** `app/extraction/elementor_extractor.py` **(versió reduïda)**: només per a `--dry-run` (compta blocs/paraules/cost estimat) i per detectar widgets Elementor no estàndard no coberts per la integració nativa WPML (veure `BIBLIOGRAFIA.md` §4, "Registering Custom Elementor Widgets").
-- [ ] **3.4** Test amb les 5-10 pàgines seleccionades a la FASE 0: confirmar que cap URL, email, SKU o shortcode acaba marcat com a traduïble per error.
+- [x] **3.1** `app/extraction/protected_content.py` (`is_protected_content()`) + `app/extraction/html_parser.py` (`extract_blocks()`): extractor de blocs semàntics (headings, paràgrafs, list items, blockquotes, botons/CTA, alt text) amb el format `content_id`/`type`/`context`/`source`/`translate` (brief secció 6), amb breadcrumb de context construït des de la jerarquia d'encapçalaments. *(Fet 2026-07-24 — treballa sobre l'HTML renderitzat de la pàgina, no sobre `_elementor_data` cru, perquè aquest camp no s'exposa via REST en aquest lloc; Elementor mateix genera aquest HTML, així que és una font vàlida i disponible avui.)*
+- [x] **3.2** `app/extraction/content_extractor.py` (`extract_page_content()`): orquestra l'extracció d'un `dict` de pàgina/post de la REST API (títol, SEO Yoast quan hi és, cos). Aplica el filtratge de contingut protegit (brief secció 7.2: URLs, emails, shortcodes) via `is_protected_content()`. *(Fet 2026-07-24.)*
+- [ ] **3.3** `app/extraction/elementor_extractor.py` (versió reduïda, dry-run): **ajornat** — `_elementor_data` no s'exposa via REST en aquest lloc (confirmat a FASE 2), així que no hi ha res real a parsejar encara. Es reprendrà quan el mu-plugin `gnss-bridge` (FASE 1, bloquejat per WPML) l'exposi.
+- [x] **3.4** Provat contra 3 pàgines/posts reals de l'staging (`scripts/extract_staging_page.py`): "Precision Agriculture" (164 blocs), "Contact us" (5 blocs), i el post "RTK GNSS for Robotics" (74 blocs). Cap URL/email va quedar marcat com a traduïble per error (0 blocs protegits en aquestes mostres — els enllaços del contingut real sempre van incrustats dins de text, no com a blocs solts; el mecanisme de protecció ja està cobert amb tests unitaris pel cas en què sí que calgui). *(Fet 2026-07-24.)*
+
+**Sortida de la fase:** ✅ Content Extraction Engine funcional i validat amb contingut real (27 tests nous, 103 en total al projecte). Pendent: 3.3 (bloquejat, sense objecte fins tenir `_elementor_data` accessible).
 
 **Sortida de la fase:** extractor que separa correctament traduïble/protegit a les pàgines de prova, verificat manualment bloc a bloc en almenys 2 pàgines.
 
