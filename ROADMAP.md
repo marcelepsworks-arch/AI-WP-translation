@@ -75,6 +75,13 @@ Això respon directament a la teva resposta ("triarem 1 i 3 o totes dues"): **s'
 - `wpml-config.xml` amb `_elementor_data` (action=`translate`, encoding=`json`) i els camps ACF/custom que aparegui a l'auditoria de la FASE 0.
 - Autenticació: reutilitza Application Passwords (mateix mecanisme que la resta de l'script), amb un usuari dedicat `translation_bot` amb rol mínim necessari (Editor, no Administrador).
 
+**Camí addicional (2026-08-04, veure `BIBLIOGRAFIA.md` §11 i `MEMORIA.md`):** a banda del bridge d'hooks pur, `gnss-bridge` s'amplia amb endpoints que permeten que `translation_bot` operi com a **"traductor local"** dins del flux natiu de Translation Management de WPML (jobs + XLIFF), sense necessitat del Translation Partners Program:
+
+- Endpoint `POST /wp-json/gnss-bridge/v1/create-job` → crida la funció interna de WPML que crea un job de Translation Management i l'assigna a `translation_bot`.
+- Endpoint `GET /wp-json/gnss-bridge/v1/export-xliff/{job_id}` → crida la funció interna de WPML que genera l'XLIFF d'un job (la mateixa que usa el botó "Export" de l'admin), evitant automatitzar la pujada/descàrrega manual de fitxers.
+- Endpoint `POST /wp-json/gnss-bridge/v1/import-xliff` → crida la funció interna d'importació d'XLIFF de WPML, perquè el job quedi com a "Complete" al dashboard natiu de WPML.
+- Els noms exactes de les funcions/classes PHP internes a embolcallar es confirmen durant la FASE 0 (auditoria), inspeccionant el codi de `wpml-translation-management` un cop instal·lat.
+
 **Per què primer:** totes les fases posteriors que escriuen a WordPress en depenen.
 
 ---
@@ -125,6 +132,9 @@ link_translation(post_id, trid)  # NOU — via gnss-bridge, no SQL
 - `WPMLAdapter` que crida `gnss-bridge` per crear/vincular traduccions un cop la QA ha passat.
 - Flux complet (secció 16 del brief): Scan → Change Check → Extract → Detect language → Glossary → DeepSeek → Structural QA → Technical QA → Score → PASS/REVIEW → Create/update WPML translation → Log.
 - `AUTO_PUBLISH=false` per defecte — les traduccions es creen com `draft`/`pending review`, mai es publiquen soles.
+- **`WPMLAdapter` amb dos camins d'escriptura triables per configuració (`.env`: `WPML_WRITE_MODE=hooks|job`, 2026-08-04):**
+  - `link_translation()` — camí original via hooks purs (`gnss-bridge/v1/link-translation`).
+  - `submit_via_job()` — camí "traductor local": crea job → exporta XLIFF → tradueix amb el pipeline ja construït (FASE 3-7, sense modificar) via el nou mòdul `app/wordpress/xliff.py` (adaptador `ContentBlock` ↔ XLIFF) → importa XLIFF via `gnss-bridge`, deixant el job com a "Complete" al dashboard natiu de WPML. Veure `BIBLIOGRAFIA.md` §11.
 
 ## FASE 9 — Pilot (5 pàgines reals)
 

@@ -26,5 +26,61 @@
     "language": "es",
     "status": "mandatory",
     "context": "geodesy"
+  },
+  {
+    "source": "control point",
+    "target": "punto de control",
+    "language": "es",
+    "status": "mandatory",
+    "context": "surveying"
+  },
+  {
+    "source": "topographic survey",
+    "target": "levantamiento topográfico",
+    "language": "es",
+    "status": "mandatory",
+    "context": "surveying"
+  },
+  {
+    "source": "leveling",
+    "target": "nivelación",
+    "language": "es",
+    "status": "mandatory",
+    "context": "surveying"
+  },
+  {
+    "source": "geoid",
+    "target": "geoide",
+    "language": "es",
+    "status": "mandatory",
+    "context": "geodesy"
+  },
+  {
+    "source": "ellipsoid",
+    "target": "elipsoide",
+    "language": "es",
+    "status": "mandatory",
+    "context": "geodesy"
+  },
+  {
+    "source": "point cloud",
+    "target": "nube de puntos",
+    "language": "es",
+    "status": "mandatory",
+    "context": "surveying"
+  },
+  {
+    "source": "traverse",
+    "target": "poligonal",
+    "language": "es",
+    "status": "mandatory",
+    "context": "surveying method"
+  },
+  {
+    "source": "azimuth",
+    "target": "azimut",
+    "language": "es",
+    "status": "mandatory",
+    "context": "surveying"
   }
 ]

@@ -200,6 +200,30 @@ Cada element té `id`, `elType` (`section`, `column`, `container`, `widget`), `w
 
 ---
 
+## 11. WPML — Proveïdor de traducció natiu (Translation Proxy) vs. traductor local + XLIFF
+
+> Investigació feta el 2026-08-04 arran de la pregunta del client sobre si DeepSeek es pot integrar com a "proveïdor de traducció natiu de WPML" en lloc del bridge d'hooks pur.
+
+### [How Translation Service Integration with WPML Works](https://wpml.org/documentation/content-translation/how-integration-with-wpml-works/) (font oficial)
+El "Translation Proxy" és el mecanisme intern que fa d'intermediari entre WPML i un servei de traducció professional: el contingut surt de WordPress com a fitxers XLIFF cap al proxy, i d'aquest cap als servidors del servei de traducció.
+
+### [custom translation service — WPML forums](https://wpml.org/forums/topic/custom-translation-service/)
+Es pot apuntar a una API de Translation Proxy pròpia des de `wp-config.php` (implementant l'API JSON del Translation Proxy de WPML), però **WPML confirma que no té previst fer disponibles serveis de traducció personalitzats fora del Translation Partners Program**. Fins i tot configurant-ho manualment, el servei personalitzat **no apareix** a `WPML → Translation Dashboard → Translation Services`.
+
+### [WPML's Translation Hub](https://wpml.org/documentation/content-translation/translation-hub/)
+Via alternativa "Instant Integration" pensada per a agències/serveis de traducció que volen gestionar clients i connectar-se sense desenvolupament (Activation Key + API Token). Pensada per a un negoci de traducció que dona servei a tercers, no per a una integració interna d'una sola web.
+
+**Conclusió (Translation Partners Program):** el Translation Partners Program és gratuit per unir-s'hi, però requereix integració activa i un mínim de 5 projectes de traducció completats, i implica aparèixer públicament al directori de WPML. **Excessiu i no adequat per a l'ús intern d'una sola web (precision-gnss.com).** Es descarta com a via per a aquest projecte.
+
+### [Using XLIFF Files in WPML](https://wpml.org/documentation/translating-your-contents/using-desktop-cat-tools/configuring-xliff-file-options/) i fòrums relacionats (font oficial + comunitat)
+- Assignar un usuari com a **"traductor local"** (`WPML → Translation Management → Translators`) és una funció estàndard del pla CMS/Agency, **sense cap requisit de partnership**.
+- L'exportació/importació d'XLIFF de jobs (`WPML → Translations → Import/Export XLIFF`) és una **funció d'admin basada en pujada/descàrrega manual de fitxer** — no hi ha una API REST o hook oficialment documentat per automatitzar-la des de fora de WordPress. Automatitzar-la simulant peticions al formulari d'admin seria fràgil (no professional, sense garanties d'estabilitat entre versions).
+- Per a integracions de codi a mida, la pròpia comunitat/documentació de WPML recomana **treballar amb el fitxer XLIFF que WPML genera per segmentar el contingut i reinserir el contingut traduït usant els hooks oficials** (`wpml_set_element_language_details`, els mateixos de la secció 2) — és a dir, la via robusta per a un cas com aquest **convergeix amb el bridge d'hooks ja dissenyat**, afegint-hi la capa de "jobs"/XLIFF només per aconseguir seguiment natiu al dashboard de WPML.
+
+**Decisió arquitectònica derivada (veure `MEMORIA.md`, entrada 2026-08-04):** no es persegueix el Translation Proxy/Partner Program. S'amplia el mateix `gnss-bridge` (mu-plugin ja dissenyat a FASE 1) amb endpoints propis que criden **directament les funcions internes de WPML** que ja fan la creació de jobs i l'exportació/importació d'XLIFF (les mateixes que usa la UI d'admin), en lloc d'automatitzar la pujada de fitxers via UI. Els noms exactes d'aquestes funcions/classes PHP s'han de confirmar quan WPML estigui instal·lat (Fase 0), inspeccionant el codi del plugin `wpml-translation-management`.
+
+---
+
 ## 10. Resum de decisions arquitectòniques derivades de la investigació
 
 | Pregunta | Resposta trobada | Font |

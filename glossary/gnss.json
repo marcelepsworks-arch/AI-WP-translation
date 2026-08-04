@@ -41,5 +41,61 @@
     "language": "es",
     "status": "mandatory",
     "context": "NTRIP/RTK"
+  },
+  {
+    "source": "multipath",
+    "target": "multitrayectoria",
+    "language": "es",
+    "status": "mandatory",
+    "context": "GNSS signal error source"
+  },
+  {
+    "source": "cycle slip",
+    "target": "salto de ciclo",
+    "language": "es",
+    "status": "mandatory",
+    "context": "carrier phase tracking"
+  },
+  {
+    "source": "ambiguity resolution",
+    "target": "resolución de ambigüedades",
+    "language": "es",
+    "status": "mandatory",
+    "context": "RTK/PPK carrier phase processing"
+  },
+  {
+    "source": "static positioning",
+    "target": "posicionamiento estático",
+    "language": "es",
+    "status": "mandatory",
+    "context": "GNSS survey method"
+  },
+  {
+    "source": "kinematic positioning",
+    "target": "posicionamiento cinemático",
+    "language": "es",
+    "status": "mandatory",
+    "context": "GNSS survey method"
+  },
+  {
+    "source": "carrier phase",
+    "target": "fase portadora",
+    "language": "es",
+    "status": "mandatory",
+    "context": "GNSS signal processing"
+  },
+  {
+    "source": "pseudorange",
+    "target": "pseudodistancia",
+    "language": "es",
+    "status": "mandatory",
+    "context": "GNSS signal processing"
+  },
+  {
+    "source": "elevation mask",
+    "target": "máscara de elevación",
+    "language": "es",
+    "status": "mandatory",
+    "context": "GNSS receiver configuration"
   }
 ]

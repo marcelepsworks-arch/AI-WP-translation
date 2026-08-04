@@ -109,14 +109,14 @@ Full methodology and page-by-page figures: [`docs/reports/executive-summary-2026
 | 2 | WordPress connector | 🟢 Read side done and validated against real staging content |
 | 3 | Content extraction (posts, pages, WooCommerce products) | 🟢 Complete — 171 blocks extracted from a real page including excerpt, social SEO fields, featured image, and categories |
 | 4 | Translator, Reviewer, Terminology Validator, chunking | 🟢 Complete — 60+ tests, validated against the real DeepSeek API |
-| 5 | Glossary Engine | 🟢 Complete (seed glossary, pending expansion with real site terminology) |
+| 5 | Glossary Engine | 🟢 Complete (24-term seed glossary, pending expansion with real site terminology) |
 | 6 | Translation memory & change detection | 🟢 Complete |
 | 7 | QA scoring engine | 🟢 Complete |
-| 8 | WPML orchestration, end to end | 🔴 Blocked — needs WPML |
+| 8 | WPML orchestration, end to end | 🟡 REST client built (`app/wordpress/wpml.py`, both write paths — hooks and local-translator/XLIFF job), unit-tested with mocks; end-to-end orchestrator (`app/cli/translate.py`) and real-WPML validation still 🔴 blocked |
 | 9 | Pilot on 5 real pages | 🔴 Blocked — needs WPML |
 | 10 | Scale-out & scheduled sync | ⚪ Not started |
 
-**164 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md).
+**183 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md).
 
 ---
 
@@ -152,7 +152,7 @@ app/
 ├── synchronization/     # Change detection
 └── qa/                    # Automated quality checks and scoring
 
-tests/            # Mirrors app/, 164 tests, no live API/network calls
+tests/            # Mirrors app/, 183 tests, no live API/network calls
 scripts/          # Manual smoke tests against the real DeepSeek API / staging site
 docs/             # Implementation plans, executive summary reports
 ```
