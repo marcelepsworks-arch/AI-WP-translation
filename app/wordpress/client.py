@@ -41,3 +41,15 @@ class WordPressClient:
 
         response.raise_for_status()
         return response
+
+    def post(self, path: str, json: dict | None = None) -> requests.Response:
+        url = f"{self._base_url}{path}"
+        auth = self._wp_auth or self._basic_auth
+
+        response = self._session.post(url, json=json, auth=auth, timeout=20)
+        if response.status_code in _RETRYABLE_STATUS_CODES:
+            time.sleep(1)
+            response = self._session.post(url, json=json, auth=auth, timeout=20)
+
+        response.raise_for_status()
+        return response
