@@ -1,5 +1,27 @@
 [
   {
+    "source": "automatic steering",
+    "target": "conducción autónoma",
+    "language": "es",
+    "status": "mandatory",
+    "context": "precision agriculture, auto-steer systems",
+    "notes": "Client preference (2026-08-06), precision-gnss.com — chosen over the more literal 'dirección automática'"
+  },
+  {
+    "source": "auto-steer",
+    "target": "conducción autónoma",
+    "language": "es",
+    "status": "mandatory",
+    "context": "precision agriculture, auto-steer systems"
+  },
+  {
+    "source": "autosteer",
+    "target": "conducción autónoma",
+    "language": "es",
+    "status": "mandatory",
+    "context": "precision agriculture, auto-steer systems"
+  },
+  {
     "source": "base station",
     "target": "estación base",
     "language": "es",

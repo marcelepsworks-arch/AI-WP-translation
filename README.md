@@ -112,11 +112,11 @@ Full methodology and page-by-page figures: [`docs/reports/executive-summary-2026
 | 5 | Glossary Engine | 🟢 Complete (24-term seed glossary, pending expansion with real site terminology) |
 | 6 | Translation memory & change detection | 🟢 Complete |
 | 7 | QA scoring engine | 🟢 Complete |
-| 8 | WPML orchestration, end to end | 🟡 REST client built (`app/wordpress/wpml.py`, both write paths — hooks and local-translator/XLIFF job), unit-tested with mocks; end-to-end orchestrator (`app/cli/translate.py`) and real-WPML validation still 🔴 blocked |
+| 8 | WPML orchestration, end to end | 🟢 **Complete, verified against real production** (`precision-gnss.com`) — `app/cli/translate.py` runs Extract → Glossary → DeepSeek → QA → draft creation → `link-translation` end to end, now including a faithful Elementor round-trip (layout, images, inline formatting — see Phase 3.3). |
 | 9 | Pilot on 5 real pages | 🔴 Blocked — needs WPML |
 | 10 | Scale-out & scheduled sync | ⚪ Not started |
 
-**183 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md).
+**244 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md).
 
 ---
 
@@ -152,7 +152,7 @@ app/
 ├── synchronization/     # Change detection
 └── qa/                    # Automated quality checks and scoring
 
-tests/            # Mirrors app/, 183 tests, no live API/network calls
+tests/            # Mirrors app/, 244 tests, no live API/network calls
 scripts/          # Manual smoke tests against the real DeepSeek API / staging site
 docs/             # Implementation plans, executive summary reports
 ```

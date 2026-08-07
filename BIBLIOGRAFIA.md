@@ -222,6 +222,14 @@ Via alternativa "Instant Integration" pensada per a agències/serveis de traducc
 
 **Decisió arquitectònica derivada (veure `MEMORIA.md`, entrada 2026-08-04):** no es persegueix el Translation Proxy/Partner Program. S'amplia el mateix `gnss-bridge` (mu-plugin ja dissenyat a FASE 1) amb endpoints propis que criden **directament les funcions internes de WPML** que ja fan la creació de jobs i l'exportació/importació d'XLIFF (les mateixes que usa la UI d'admin), en lloc d'automatitzar la pujada de fitxers via UI. Els noms exactes d'aquestes funcions/classes PHP s'han de confirmar quan WPML estigui instal·lat (Fase 0), inspeccionant el codi del plugin `wpml-translation-management`.
 
+### Actualització empírica 2026-08-05 — confirmat contra producció: el namespace `wpml/tm/v1` existeix però no és cridable via Application Password
+
+Un cop WPML 4.9.6 instal·lat i actiu a producció (`precision-gnss.com`), s'ha confirmat que el namespace `wpml/tm/v1` **sí existeix de debò** i exposa rutes reals de jobs/XLIFF: `xliff/fetch/{jobId}`, `tp/xliff/download/{job_id}/{job_type}`, `tp/apply-translations`, `jobs`, `jobs/assign`, `jobs/cancel` (descobertes via `GET /wp-json/wpml/tm/v1`, enumeració pública de rutes sense autenticació).
+
+**Però:** en provar-los amb un Application Password d'un compte amb **permisos complets d'Administrador confirmats** (verificat contra `GET /wp/v2/settings`, que només respon a un admin), `GET /wpml/tm/v1/jobs` retorna `403 rest_forbidden` — el mateix error que sense cap permís especial. Afegir el compte com a "Translation Manager" a WPML (`WPML → Translation Dashboard → pestanya Translators`) tampoc ho desbloqueja. Conclusió: aquestes rutes estan protegides per alguna cosa més enllà del sistema estàndard de capacitats de WordPress — molt probablement un **nonce intern generat només per la sessió de navegador de l'Advanced Translation Editor**, no pensat per a cap ús extern via REST/Application Password.
+
+**Decisió (veure `MEMORIA.md` 2026-08-05):** es descarta cridar aquests endpoints directament. Es manté el pla original: `gnss-bridge` amb els hooks oficials documentats a §2 per al camí de vinculació (`link-translation`, ja implementat), i els endpoints `create-job`/`export-xliff`/`import-xliff` es deixen com a **stub (`501`)** fins que es pugui confirmar una via correcta (revisió de codi font o suport oficial de WPML) — no té sentit endevinar noms de classes/funcions PHP internes en un mu-plugin de producció, on un error fatal tomba tot el lloc.
+
 ---
 
 ## 10. Resum de decisions arquitectòniques derivades de la investigació
