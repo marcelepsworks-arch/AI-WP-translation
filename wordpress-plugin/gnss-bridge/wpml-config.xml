@@ -1,0 +1,10 @@
+<wpml-config>
+  <custom-fields>
+    <custom-field action="translate" style="visual" encoding="json" label="Elementor Content">
+      _elementor_data
+    </custom-field>
+    <custom-field action="translate" label="Yoast SEO Title">_yoast_wpseo_title</custom-field>
+    <custom-field action="translate" label="Yoast Meta Description">_yoast_wpseo_metadesc</custom-field>
+    <custom-field action="translate" label="Yoast Focus Keyword">_yoast_wpseo_focuskw</custom-field>
+  </custom-fields>
+</wpml-config>
