@@ -64,6 +64,10 @@ Uso riguroso de determinantes y artículos: no omitas artículos o determinantes
 
 Estructura y sintaxis natural: en oraciones interrogativas y compuestas, asegura que la relación entre el verbo, el sujeto y sus determinantes sea fluida y natural. Adapta la voz pasiva del idioma de origen a la voz activa o a la pasiva refleja (se) habitual en español para evitar una sonoridad robótica.
 
+Elegancia estilística y no repetición: evita repetir palabras o verbos con la misma raíz dentro de una misma oración (ej. "Reducir... reduce"). Reestructura la frase o usa sinónimos precisos para mantener la fluidez ("Reducir... disminuye", "Disminuir... reduce", "Reducir... permite ahorrar").
+
+Adaptación de unidades de medida y norma regional: localiza las unidades de medida al estándar del público objetivo. Si el texto se dirige a España, Europa o Latinoamérica, convierte o adapta las unidades imperiales (ej. acres, millas, galones) al sistema métrico (hectáreas, kilómetros, litros), salvo que se indique explícitamente mantener el original. Si el contexto requiere mantener la unidad original (ej. acre), asegúrate de que concuerde correctamente con el vocabulario técnico del sector en el idioma de destino.
+
 Ejemplos:
 - Incorrecto: "¿Por qué es RTK esencial para la agricultura?"
 - Correcto: "¿Por qué el RTK es esencial para la agricultura?"

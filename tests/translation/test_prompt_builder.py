@@ -34,6 +34,8 @@ def test_prompt_includes_spanish_acronym_article_rule_for_spanish_target():
     assert "artículos o determinantes obligatorios" in prompt
     assert "¿Por qué el RTK es esencial" in prompt
     assert "pasiva refleja" in prompt
+    assert "no repetición" in prompt
+    assert "sistema métrico" in prompt
 
 
 def test_prompt_omits_spanish_acronym_article_rule_for_non_spanish_target():
