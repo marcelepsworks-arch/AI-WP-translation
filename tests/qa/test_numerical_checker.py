@@ -37,3 +37,20 @@ def test_check_numbers_ignores_currency_symbol_differences():
     result = check_numbers("The receiver costs $99.", "El receptor cuesta 99€.")
 
     assert result.passed is True
+
+
+def test_check_numbers_tolerates_legitimate_acronym_repetition():
+    # Real case found 2026-08-06 on precision-gnss.com: translator spells
+    # out an acronym in parentheses, repeating the number — not an error.
+    result = check_numbers(
+        "7-DoF Manipulation system",
+        "sistema de manipulación de 7 grados de libertad (7-DoF)",
+    )
+
+    assert result.passed is True
+
+
+def test_check_numbers_still_fails_when_a_number_is_genuinely_dropped():
+    result = check_numbers("5 satellites in view, 3 fixed.", "5 satélites a la vista, 5 fijos.")
+
+    assert result.passed is False

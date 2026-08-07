@@ -25,8 +25,12 @@ class NumericCheckResult(BaseModel):
 
 
 def check_numbers(source_text: str, translated_text: str) -> NumericCheckResult:
-    source_numbers = sorted(_normalize(n) for n in extract_numbers(source_text))
-    translated_numbers = sorted(_normalize(n) for n in extract_numbers(translated_text))
+    # Compared as sets, not multisets: a translator legitimately restating an
+    # already-mentioned number (e.g. spelling out an acronym in parentheses,
+    # "7-DoF" -> "7 grados de libertad (7-DoF)") must not fail this check —
+    # only a genuinely dropped, changed, or newly-invented number should.
+    source_numbers = sorted({_normalize(n) for n in extract_numbers(source_text)})
+    translated_numbers = sorted({_normalize(n) for n in extract_numbers(translated_text)})
 
     return NumericCheckResult(
         passed=source_numbers == translated_numbers,
