@@ -68,6 +68,12 @@ Elegancia estilística y no repetición: evita repetir palabras o verbos con la 
 
 Adaptación de unidades de medida y norma regional: localiza las unidades de medida al estándar del público objetivo. Si el texto se dirige a España, Europa o Latinoamérica, convierte o adapta las unidades imperiales (ej. acres, millas, galones) al sistema métrico (hectáreas, kilómetros, litros), salvo que se indique explícitamente mantener el original. Si el contexto requiere mantener la unidad original (ej. acre), asegúrate de que concuerde correctamente con el vocabulario técnico del sector en el idioma de destino.
 
+Uso de verbos de acción y léxico propio del sector:
+
+Verbos de acción nativos por industria: no traduzcas los verbos de forma genérica o literal si existe un verbo de acción habitual en la industria de destino. Prioriza siempre la terminología que emplean los profesionales del sector en su día a día (ej. en agricultura: usar "conducir/guiar/manejar un tractor" en lugar de "dirigir"; "labrar/cultivar" en lugar de "trabajar la tierra").
+
+Colocaciones léxicas naturales: asegúrate de que la combinación verbo-sustantivo responda al uso real de un experto nativo en la materia, ajustando la traducción para que no suene como una adaptación literal del idioma de origen.
+
 Ejemplos:
 - Incorrecto: "¿Por qué es RTK esencial para la agricultura?"
 - Correcto: "¿Por qué el RTK es esencial para la agricultura?"

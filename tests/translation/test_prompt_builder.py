@@ -36,6 +36,8 @@ def test_prompt_includes_spanish_acronym_article_rule_for_spanish_target():
     assert "pasiva refleja" in prompt
     assert "no repetición" in prompt
     assert "sistema métrico" in prompt
+    assert "verbos de acción nativos" in prompt.lower()
+    assert "colocaciones léxicas naturales" in prompt.lower()
 
 
 def test_prompt_omits_spanish_acronym_article_rule_for_non_spanish_target():
