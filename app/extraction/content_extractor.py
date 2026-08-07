@@ -19,6 +19,7 @@ def extract_page_content(
     featured_media: dict | None = None,
     categories: list[dict] | None = None,
     tags: list[dict] | None = None,
+    skip_body: bool = False,
 ) -> list[ContentBlock]:
     prefix = id_prefix or f"page_{page['id']}"
     blocks: list[ContentBlock] = []
@@ -76,8 +77,9 @@ def extract_page_content(
                 )
             )
 
-    body_html = page["content"]["rendered"]
-    blocks.extend(extract_blocks(body_html, id_prefix=prefix))
+    if not skip_body:
+        body_html = page["content"]["rendered"]
+        blocks.extend(extract_blocks(body_html, id_prefix=prefix))
 
     if categories:
         blocks.extend(extract_taxonomy_terms(categories, id_prefix=prefix, term_type="category"))

@@ -76,6 +76,13 @@ def extract_blocks(html: str, id_prefix: str = "block") -> list[ContentBlock]:
         if not text:
             continue
 
+        # Inner HTML (not plain get_text()) so inline formatting -- <strong>,
+        # <em>, <a href="...">-- survives translation instead of being
+        # silently stripped. The plain-text `text` above is still what
+        # decides emptiness/protected-content, since matching those against
+        # raw HTML would be unreliable.
+        source_html = tag.decode_contents().strip() or text
+
         if tag.name in _HEADING_TAGS:
             level = int(tag.name[1])
             heading_stack[:] = [h for h in heading_stack if h[0] < level]
@@ -85,7 +92,7 @@ def extract_blocks(html: str, id_prefix: str = "block") -> list[ContentBlock]:
                     content_id=f"{id_prefix}_block_{counter}",
                     type="heading",
                     context=current_context(),
-                    source=text,
+                    source=source_html,
                     translate=not is_protected_content(text),
                 )
             )
@@ -98,7 +105,7 @@ def extract_blocks(html: str, id_prefix: str = "block") -> list[ContentBlock]:
                 content_id=f"{id_prefix}_block_{counter}",
                 type=_block_type_for_tag(tag.name),
                 context=current_context(),
-                source=text,
+                source=source_html,
                 translate=not is_protected_content(text),
             )
         )

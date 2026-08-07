@@ -27,6 +27,12 @@ def test_extract_page_content_includes_body_blocks_after_title():
     assert body_types == ["heading", "paragraph"]
 
 
+def test_extract_page_content_skip_body_omits_content_rendered_blocks():
+    blocks = extract_page_content(_sample_page(), id_prefix="page_4309", skip_body=True)
+
+    assert [b.type for b in blocks] == ["title"]
+
+
 def test_extract_page_content_includes_seo_fields_when_present():
     page = _sample_page(
         yoast_head_json={

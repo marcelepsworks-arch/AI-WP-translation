@@ -50,7 +50,17 @@ def test_extract_blocks_does_not_duplicate_link_text_already_inside_paragraph():
 
     assert len(blocks) == 1
     assert blocks[0].type == "paragraph"
-    assert blocks[0].source == "Read the documentation for details."
+    # No separate "button" block for the inline <a> -- but the link itself
+    # (href and text) is preserved inline in the paragraph's own source.
+    assert blocks[0].source == 'Read the <a href="/docs/">documentation</a> for details.'
+
+
+def test_extract_blocks_preserves_bold_and_emphasis_tags_in_paragraph_source():
+    html = "<p>In simple terms, <strong>RTK is very accurate</strong> and reliable.</p>"
+
+    blocks = extract_blocks(html)
+
+    assert blocks[0].source == "In simple terms, <strong>RTK is very accurate</strong> and reliable."
 
 
 def test_extract_blocks_extracts_image_alt_text():
