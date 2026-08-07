@@ -11,6 +11,8 @@ a single request.
 from __future__ import annotations
 
 import json
+import threading
+import time
 
 from openai import OpenAI
 
@@ -39,6 +41,12 @@ class DeepSeekClient:
         self._model = model
         self._qa_model = qa_model
         self._client = client or OpenAI(api_key=api_key, base_url=base_url)
+        # model -> {"input": tokens, "output": tokens}. Cumulative across every
+        # translate()/review()/validate_terminology() call on this client.
+        # Guarded by a lock since translate_blocks() can run concurrently
+        # (max_workers > 1) across multiple threads sharing one client.
+        self.usage: dict[str, dict[str, int]] = {}
+        self._usage_lock = threading.Lock()
 
     def translate(
         self,
@@ -79,17 +87,53 @@ class DeepSeekClient:
         data = self._call(self._qa_model, system_prompt, user_prompt)
         return TerminologyValidationResult.model_validate(data)
 
+    _MAX_RETRIES = 2
+
     def _call(self, model: str, system_prompt: str, user_prompt: str) -> dict:
-        response = self._client.chat.completions.create(
-            model=model,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        raw_content = response.choices[0].message.content
-        return json.loads(raw_content)
+        last_error: Exception = RuntimeError("unreachable")
+        for attempt in range(self._MAX_RETRIES + 1):
+            response = self._client.chat.completions.create(
+                model=model,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            raw_content = response.choices[0].message.content
+            if raw_content:
+                try:
+                    data = json.loads(raw_content)
+                except json.JSONDecodeError as exc:
+                    last_error = exc
+                else:
+                    self._record_usage(model, response)
+                    return data
+            else:
+                last_error = ValueError("DeepSeek returned an empty response")
+
+            if attempt < self._MAX_RETRIES:
+                time.sleep(1)
+
+        raise RuntimeError(
+            f"DeepSeek returned no usable content after {self._MAX_RETRIES + 1} attempts"
+        ) from last_error
+
+    def _record_usage(self, model: str, response) -> None:
+        # Best-effort: token accounting must never break a translation. Also
+        # silently no-ops against mocked responses in tests (MagicMock
+        # attributes fail the int() conversion and are caught here).
+        try:
+            usage = response.usage
+            prompt_tokens = int(usage.prompt_tokens)
+            completion_tokens = int(usage.completion_tokens)
+        except (AttributeError, TypeError, ValueError):
+            return
+
+        with self._usage_lock:
+            bucket = self.usage.setdefault(model, {"input": 0, "output": 0})
+            bucket["input"] += prompt_tokens
+            bucket["output"] += completion_tokens
 
     @staticmethod
     def _build_translate_user_prompt(source_text: str, context: str) -> str:
