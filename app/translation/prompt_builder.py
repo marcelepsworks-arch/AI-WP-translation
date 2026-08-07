@@ -56,6 +56,22 @@ _AMBIGUITY_RULE = (
 _RESPONSE_FORMAT_RULE = """Respond ONLY with a JSON object matching this exact shape:
 {"translation": "...", "confidence": 0.0-1.0, "issues": [{"type": "...", "description": "..."}], "terminology_used": [{"source": "...", "target": "..."}]}"""
 
+_SPANISH_ACRONYM_ARTICLE_RULE = """Instrucciones generales de traducción y redacción para español:
+
+Prioridad de fluidez sobre literalidad: traduce siempre buscando la máxima naturalidad y corrección gramatical en español nativo, evitando calcos sintácticos del idioma de origen. Si una traducción literal resulta forzada, reestructura la frase para que adopte la cadencia y el orden de palabras habitual en español.
+
+Uso riguroso de determinantes y artículos: no omitas artículos o determinantes obligatorios en español (el, la, los, las), especialmente delante de sustantivos, siglas, acrónimos, tecnologías o conceptos abstractos que funcionen como sujeto o complemento — incluso en oraciones interrogativas, donde el artículo no debe omitirse entre el verbo y la sigla.
+
+Estructura y sintaxis natural: en oraciones interrogativas y compuestas, asegura que la relación entre el verbo, el sujeto y sus determinantes sea fluida y natural. Adapta la voz pasiva del idioma de origen a la voz activa o a la pasiva refleja (se) habitual en español para evitar una sonoridad robótica.
+
+Ejemplos:
+- Incorrecto: "¿Por qué es RTK esencial para la agricultura?"
+- Correcto: "¿Por qué el RTK es esencial para la agricultura?"
+- Incorrecto: "Ventajas de usar GPS en topografía."
+- Correcto: "Ventajas de usar el GPS en topografía."
+- Incorrecto: "¿Cómo funciona IA en este proceso?"
+- Correcto: "¿Cómo funciona la IA en este proceso?\""""
+
 
 @dataclass(frozen=True)
 class GlossaryTerm:
@@ -86,6 +102,9 @@ def build_system_prompt(
         _MUST_NOT_RULES,
         _AMBIGUITY_RULE,
     ]
+
+    if "spanish" in target_language_name.lower():
+        sections.append(_SPANISH_ACRONYM_ARTICLE_RULE)
 
     if glossary_terms:
         sections.append(_build_glossary_section(glossary_terms))

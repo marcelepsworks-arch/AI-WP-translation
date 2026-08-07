@@ -28,6 +28,21 @@ def test_prompt_includes_must_not_rules():
     assert "translate protected product names" in prompt
 
 
+def test_prompt_includes_spanish_acronym_article_rule_for_spanish_target():
+    prompt = build_system_prompt("European Spanish")
+
+    assert "artículos o determinantes obligatorios" in prompt
+    assert "¿Por qué el RTK es esencial" in prompt
+    assert "pasiva refleja" in prompt
+
+
+def test_prompt_omits_spanish_acronym_article_rule_for_non_spanish_target():
+    prompt = build_system_prompt("French")
+
+    assert "artículos o determinantes obligatorios" not in prompt
+    assert "RTK es esencial" not in prompt
+
+
 def test_prompt_has_no_glossary_section_when_no_terms_given():
     prompt = build_system_prompt("European Spanish")
 
