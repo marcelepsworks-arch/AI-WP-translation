@@ -27,6 +27,18 @@ def get_wpml_status(client: WordPressClient, post_id: int) -> dict:
     return client.get(f"{_BRIDGE_PREFIX}/translation-status/{post_id}").json()
 
 
+def get_translation_status(client: WordPressClient, post_id: int, target_language: str) -> dict:
+    """Like `get_wpml_status`, but also asks about one target language:
+    `translation_exists`, `translated_post_id`, and `needs_update` (WPML's
+    own per-language status -- null when unknown). This is what
+    `app.cli.sync` uses to decide between creating a new translation and
+    updating an existing one.
+    """
+    return client.get(
+        f"{_BRIDGE_PREFIX}/translation-status/{post_id}", params={"language_code": target_language}
+    ).json()
+
+
 def link_translation(
     client: WordPressClient,
     element_id: int,

@@ -43,6 +43,8 @@ BIBLIOGRAFIA.md section 5, not the account's login password).
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -107,6 +109,22 @@ class PageReview(BaseModel):
     target_language: str
     payload: dict
     blocks: list[BlockResult]
+
+
+def hash_source(text: str) -> str:
+    """Fingerprint of a block's source text, stored alongside its
+    translation (`_gnss_block_hashes` meta) so a later run can tell which
+    blocks changed since the last translation -- see `app.cli.sync`.
+    """
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def build_block_hashes(blocks: list[ContentBlock], results_by_id: dict[str, BlockResult]) -> dict[str, dict]:
+    return {
+        block.content_id: {"hash": hash_source(block.source), "translation": results_by_id[block.content_id].translation}
+        for block in blocks
+        if block.content_id in results_by_id
+    }
 
 
 def _protected_terms(glossary_entries: list[GlossaryEntry], language: str) -> list[str]:
@@ -292,6 +310,55 @@ def save_review(
     )
 
 
+def build_translation_payload(
+    page: dict,
+    post_id: int,
+    post_type: str,
+    blocks: list[ContentBlock],
+    all_blocks: list[ContentBlock],
+    elementor_doc,
+    results: list[BlockResult],
+    results_by_id: dict[str, BlockResult],
+) -> dict:
+    """Builds the exact WordPress REST payload (title/content/meta/status)
+    for a translated page, given the already-translated block results.
+    Shared by `translate_page` (full create) and `app.cli.sync` (partial
+    update, where some `results` are freshly translated and some are reused
+    from the previous run via `_gnss_block_hashes`).
+    """
+    title_result = next((r for r in results if r.type == "title"), None)
+    excerpt_result = next((r for r in results if r.type == "excerpt"), None)
+
+    meta = {
+        yoast_field: results_by_id[block.content_id].translation
+        for block in blocks
+        if (yoast_field := _YOAST_FIELD_BY_BLOCK_TYPE.get(block.type)) and block.content_id in results_by_id
+    }
+
+    if elementor_doc is not None:
+        elementor_doc.apply_translations({r.content_id: r.translation for r in results})
+        meta["_elementor_data"] = elementor_doc.to_json()
+        original_meta = page.get("meta", {})
+        for carry_over_field in ("_elementor_edit_mode", "_elementor_template_type", "_elementor_version"):
+            if original_meta.get(carry_over_field):
+                meta[carry_over_field] = original_meta[carry_over_field]
+        logger.info("rebuilt _elementor_data for translated %s (source %s %d)", post_type, post_type, post_id)
+
+    # Stored so a later `app.cli.sync` run can tell which blocks' source text
+    # actually changed, and skip re-translating (and re-paying for) the rest.
+    meta["_gnss_block_hashes"] = json.dumps(build_block_hashes(all_blocks, results_by_id))
+
+    payload: dict = {
+        "title": title_result.translation if title_result else page["title"]["rendered"],
+        "content": reassemble_body_html(blocks, results_by_id),
+        "status": "draft",  # never anything else -- see module docstring
+        "meta": meta,
+    }
+    if excerpt_result:
+        payload["excerpt"] = excerpt_result.translation
+    return payload
+
+
 def translate_page(
     wp_client: WordPressClient,
     deepseek: DeepSeekClient,
@@ -344,32 +411,9 @@ def translate_page(
     # Payload is always built (even in dry-run/review) since review mode
     # needs the exact WP-write payload to save for later publishing --
     # building it costs nothing extra, it just doesn't get sent anywhere yet.
-    title_result = next((r for r in results if r.type == "title"), None)
-    excerpt_result = next((r for r in results if r.type == "excerpt"), None)
-
-    meta = {
-        yoast_field: results_by_id[block.content_id].translation
-        for block in blocks
-        if (yoast_field := _YOAST_FIELD_BY_BLOCK_TYPE.get(block.type)) and block.content_id in results_by_id
-    }
-
-    if elementor_doc is not None:
-        elementor_doc.apply_translations({r.content_id: r.translation for r in results})
-        meta["_elementor_data"] = elementor_doc.to_json()
-        original_meta = page.get("meta", {})
-        for carry_over_field in ("_elementor_edit_mode", "_elementor_template_type", "_elementor_version"):
-            if original_meta.get(carry_over_field):
-                meta[carry_over_field] = original_meta[carry_over_field]
-        logger.info("rebuilt _elementor_data for translated %s (source %s %d)", post_type, post_type, post_id)
-
-    payload: dict = {
-        "title": title_result.translation if title_result else page["title"]["rendered"],
-        "content": reassemble_body_html(blocks, results_by_id),
-        "status": "draft",  # never anything else -- see module docstring
-        "meta": meta,
-    }
-    if excerpt_result:
-        payload["excerpt"] = excerpt_result.translation
+    payload = build_translation_payload(
+        page, post_id, post_type, blocks, all_blocks, elementor_doc, results, results_by_id
+    )
 
     endpoint = f"/wp-json/wp/v2/{'pages' if post_type == 'page' else 'posts'}"
 

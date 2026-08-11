@@ -153,11 +153,41 @@ function gnss_bridge_translation_status(WP_REST_Request $request) {
     if ($target_language) {
         $target_language = sanitize_text_field((string) $target_language);
         $translated_id = apply_filters('wpml_object_id', $post_id, $post->post_type, false, $target_language);
-        $response['translation_exists']  = (bool) $translated_id && $translated_id !== $post_id;
-        $response['translated_post_id']  = ($translated_id && $translated_id !== $post_id) ? $translated_id : null;
+        $translation_exists = (bool) $translated_id && $translated_id !== $post_id;
+        $response['translation_exists']  = $translation_exists;
+        $response['translated_post_id']  = $translation_exists ? $translated_id : null;
+        $response['needs_update'] = $translation_exists
+            ? gnss_bridge_translation_needs_update($language_details->trid ?? null, $target_language)
+            : null;
     }
 
     return rest_ensure_response($response);
+}
+
+/**
+ * Reads WPML's own per-language translation status directly from
+ * `icl_translations.status` (read-only SELECT, no write). `3` is WPML's
+ * internal ICL_TM_NEEDS_UPDATE constant, set automatically whenever the
+ * source content is edited after being translated -- documented in WPML's
+ * Translation Management source and community references, not a public
+ * filter. Like the rest of this bridge, only ever read, never guessed at
+ * for writes. Returns null (unknown) rather than guessing if no row is
+ * found, so callers can fall back to "assume needs update" defensively.
+ */
+function gnss_bridge_translation_needs_update($trid, string $language_code): ?bool {
+    if (!$trid) {
+        return null;
+    }
+    global $wpdb;
+    $status = $wpdb->get_var($wpdb->prepare(
+        "SELECT status FROM {$wpdb->prefix}icl_translations WHERE trid = %d AND language_code = %s",
+        $trid,
+        $language_code
+    ));
+    if ($status === null) {
+        return null;
+    }
+    return ((int) $status) === 3;
 }
 
 /**
