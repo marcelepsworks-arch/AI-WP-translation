@@ -23,7 +23,7 @@ def test_record_updates_progress_and_percentage(tmp_path: Path):
     content = html_path.read_text(encoding="utf-8")
     assert "1 / 2 blocks (50%)" in content
     assert "b1" in content
-    assert "auto_approve: 1" in content
+    assert "Auto-approved: 1" in content
 
 
 def test_record_shows_reject_row_with_reject_css_class(tmp_path: Path):
@@ -33,7 +33,7 @@ def test_record_shows_reject_row_with_reject_css_class(tmp_path: Path):
     tracker.record("b1", "paragraph", "reject", 60)
 
     content = html_path.read_text(encoding="utf-8")
-    assert '<tr class="reject">' in content
+    assert '<tr class="row-reject">' in content
 
 
 def test_finish_marks_page_as_done_and_removes_auto_refresh(tmp_path: Path):

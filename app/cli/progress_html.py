@@ -5,6 +5,11 @@ local Python process (only `downloads` and `mcp` are available to this
 account, neither of which bridges live local state). This writes a plain
 HTML file to disk instead; <meta http-equiv="refresh"> does the auto-reload
 client-side. Open it once in a browser and leave it open.
+
+Once a run finishes, this file *is* the human review report (source vs.
+translation per block, QA verdict) — see `app.cli.translate --review` and
+`app.cli.publish` — so its styling matches the project's other client-facing
+reports (`docs/reports/*.html`), not a debug console.
 """
 from __future__ import annotations
 
@@ -16,6 +21,8 @@ from pathlib import Path
 from app.translation.pricing import estimate_cost_usd
 
 _MAX_ROWS_SHOWN = 50
+
+_DECISION_LABEL = {"auto_approve": "Auto-approved", "human_review": "Needs review", "reject": "Rejected"}
 
 
 class ProgressTracker:
@@ -85,17 +92,20 @@ class ProgressTracker:
         # this file *is* the review report, so every block must be visible.
         shown = self._completed if self._finished_decision else self._completed[-_MAX_ROWS_SHOWN:]
         rows = "\n".join(
-            f'<tr class="{html.escape(item["decision"])}">'
-            f'<td>{html.escape(item["content_id"])}</td>'
-            f'<td>{html.escape(item["type"])}</td>'
-            f'<td>{html.escape(item["decision"])}</td>'
-            f'<td>{item["score"] if item["score"] is not None else "-"}</td>'
+            f'<tr class="row-{html.escape(item["decision"])}">'
+            f'<td><span class="dot dot-{html.escape(item["decision"])}"></span>{html.escape(item["content_id"])}</td>'
+            f'<td class="muted">{html.escape(item["type"])}</td>'
+            f'<td>{html.escape(_DECISION_LABEL.get(item["decision"], item["decision"]))}</td>'
+            f'<td class="muted">{item["score"] if item["score"] is not None else "&ndash;"}</td>'
             f'<td class="text">{html.escape(item["source"])}</td>'
             f'<td class="text">{html.escape(item["translation"])}</td>'
             f"</tr>"
             for item in reversed(shown)
         )
-        counts_html = " ".join(f'<span class="badge {k}">{k}: {v}</span>' for k, v in counts.items())
+        counts_html = " ".join(
+            f'<span class="badge badge-{k}"><span class="dot dot-{k}"></span>{_DECISION_LABEL.get(k, k)}: {v}</span>'
+            for k, v in counts.items()
+        )
 
         usage_section = ""
         if self._usage:
@@ -108,60 +118,118 @@ class ProgressTracker:
                 for model, counts in self._usage.items()
             )
             usage_section = f"""
-<h2 style="font-size:1rem;margin-top:1.5rem;">Token usage &amp; estimated cost</h2>
+<h2>Token usage &amp; estimated cost</h2>
 <table>
 <tr><th>Model</th><th>Input tokens</th><th>Output tokens</th><th>Total</th></tr>
 {usage_rows}
 </table>
-<p><b>Estimated cost: ${cost:.4f} USD</b> <span style="opacity:.5">(DeepSeek pricing, approximate — see app/translation/pricing.py)</span></p>"""
+<div class="callout"><b>Estimated cost: ${cost:.4f} USD</b> <span class="muted">(DeepSeek pricing, approximate — see app/translation/pricing.py)</span></div>"""
 
-        status_line = (
-            f'<p class="status">Finished — overall decision: <b>{html.escape(self._finished_decision)}</b></p>'
-            if self._finished_decision
-            else '<p class="status">Running…</p>'
-        )
+        if self._finished_decision:
+            status_kind = self._finished_decision if self._finished_decision != "auto_approve" else "auto_approve"
+            status_pill = (
+                f'<span class="pill pill-{html.escape(status_kind)}"><span class="dot dot-{html.escape(status_kind)}"></span>'
+                f'Finished &middot; {html.escape(_DECISION_LABEL.get(self._finished_decision, self._finished_decision))}</span>'
+            )
+        else:
+            status_pill = '<span class="pill pill-running"><span class="dot dot-running"></span>Running&hellip;</span>'
+
         publish_section = ""
         if self._finished_decision and self._publish_command:
             publish_section = f"""
-<h2 style="font-size:1rem;margin-top:1.5rem;">Review this page, then publish it</h2>
-<p>Nothing has been written to WordPress yet. Read through the source/translation columns above; if it looks
-good, run this command to publish the draft and link it in WPML (no re-translation, no extra DeepSeek cost):</p>
-<pre style="background:#000;padding:.8rem;border-radius:6px;overflow-x:auto;">{html.escape(self._publish_command)}</pre>"""
+<h2>Review this page, then publish it</h2>
+<p class="lead">Nothing has been written to WordPress yet. Read through the source/translation columns above; if it
+looks good, run this command to publish the draft and link it in WPML &mdash; no re-translation, no extra
+DeepSeek cost.</p>
+<pre class="cmd">{html.escape(self._publish_command)}</pre>"""
         refresh_tag = "" if self._finished_decision else '<meta http-equiv="refresh" content="2">'
 
         page = f"""<!doctype html>
 <html><head><meta charset="utf-8">
 {refresh_tag}
-<title>Translation progress — post {self.post_id}</title>
+<title>Translation review — post {self.post_id}</title>
 <style>
-body {{ font-family: system-ui, sans-serif; margin: 2rem; background: #111; color: #eee; }}
-h1 {{ font-size: 1.2rem; }}
-.status {{ opacity: .85; }}
-.bar-outer {{ background: #333; border-radius: 6px; height: 24px; width: 100%; overflow: hidden; margin: 1rem 0; }}
-.bar-inner {{ background: #4caf50; height: 100%; transition: width .3s; }}
-.badge {{ display: inline-block; padding: .2rem .6rem; border-radius: 4px; margin-right: .5rem; font-size: .85rem; }}
-.badge.auto_approve {{ background: #2e7d32; }}
-.badge.human_review {{ background: #b8860b; }}
-.badge.reject {{ background: #b71c1c; }}
-table {{ border-collapse: collapse; width: 100%; margin-top: 1rem; table-layout: fixed; }}
-td, th {{ padding: .3rem .6rem; border-bottom: 1px solid #333; text-align: left; font-size: .9rem; }}
-td.text {{ white-space: pre-wrap; word-break: break-word; width: 32%; }}
-tr.reject {{ background: #3a1414; }}
-tr.human_review {{ background: #3a2f14; }}
+  :root{{
+    --ink:#1d1d1f; --ink-soft:#6e6e73; --accent:#0a5fb4; --accent-soft:#eef4fb;
+    --line:#e5e5e7; --bg-card:#f5f5f7; --good:#1a7a3c; --good-soft:#e9f6ee;
+    --warn:#a8631a; --warn-soft:#fbf1e6; --bad:#b3261e; --bad-soft:#fbeceb;
+    --run:#6e6e73; --run-soft:#f0f0f2;
+  }}
+  *{{ box-sizing:border-box; }}
+  html,body{{ margin:0; padding:0; }}
+  body{{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); background:#fafafa; font-size:13px; line-height:1.6; -webkit-font-smoothing:antialiased;
+    padding:32px 40px 56px;
+  }}
+  .wrap{{ max-width:1100px; margin:0 auto; }}
+  .eyebrow{{ font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:6px; }}
+  h1{{ font-size:24px; font-weight:700; letter-spacing:-0.3px; margin:0 0 14px 0; color:var(--ink); }}
+  h2{{ font-size:14px; font-weight:700; margin:26px 0 8px 0; color:var(--ink); }}
+  p{{ margin:0 0 10px 0; color:#3a3a3c; }}
+  p.lead{{ font-size:13px; color:#3a3a3c; }}
+  .muted{{ color:var(--ink-soft); }}
+
+  .pill{{
+    display:inline-flex; align-items:center; gap:7px; padding:6px 14px; border-radius:100px;
+    font-size:12.5px; font-weight:600; margin-bottom:18px;
+  }}
+  .pill-running{{ background:var(--run-soft); color:var(--run); }}
+  .pill-auto_approve{{ background:var(--good-soft); color:var(--good); }}
+  .pill-human_review{{ background:var(--warn-soft); color:var(--warn); }}
+  .pill-reject{{ background:var(--bad-soft); color:var(--bad); }}
+
+  .dot{{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:2px; }}
+  .dot-running{{ background:var(--run); animation:pulse 1.4s ease-in-out infinite; }}
+  .dot-auto_approve{{ background:var(--good); }}
+  .dot-human_review{{ background:var(--warn); }}
+  .dot-reject{{ background:var(--bad); }}
+  @keyframes pulse{{ 0%,100%{{ opacity:1; }} 50%{{ opacity:.35; }} }}
+
+  .bar-outer{{ background:var(--line); border-radius:100px; height:8px; width:100%; overflow:hidden; margin:4px 0 10px; }}
+  .bar-inner{{ background:var(--accent); height:100%; border-radius:100px; transition:width .3s; }}
+  .meta-line{{ font-size:12px; color:var(--ink-soft); margin-bottom:16px; }}
+
+  .badge{{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:8px;
+    margin:0 8px 8px 0; font-size:12px; font-weight:600;
+  }}
+  .badge-auto_approve{{ background:var(--good-soft); color:var(--good); }}
+  .badge-human_review{{ background:var(--warn-soft); color:var(--warn); }}
+  .badge-reject{{ background:var(--bad-soft); color:var(--bad); }}
+
+  table{{ width:100%; border-collapse:collapse; margin-top:12px; table-layout:fixed; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }}
+  th{{
+    text-align:left; font-size:10.5px; letter-spacing:.4px; text-transform:uppercase; color:var(--ink-soft);
+    font-weight:600; padding:10px 12px; border-bottom:1.5px solid var(--ink); background:var(--bg-card);
+  }}
+  td{{ padding:10px 12px; border-bottom:1px solid var(--line); color:#3a3a3c; vertical-align:top; font-size:12.5px; }}
+  td.text{{ white-space:pre-wrap; word-break:break-word; width:28%; }}
+  tr:last-child td{{ border-bottom:none; }}
+  tr.row-human_review td{{ background:var(--warn-soft); }}
+  tr.row-reject td{{ background:var(--bad-soft); }}
+
+  pre.cmd{{ background:#1d1d1f; color:#f5f5f7; padding:14px 16px; border-radius:10px; overflow-x:auto; font-family:"SF Mono",Consolas,"Courier New",monospace; font-size:12px; }}
+  .callout{{ background:var(--accent-soft); border-radius:12px; padding:12px 16px; margin:10px 0; font-size:12.5px; color:#1a3a57; }}
+  .callout b{{ color:var(--accent); }}
+  .footnote{{ font-size:11px; color:var(--ink-soft); margin-top:8px; }}
 </style>
 </head>
 <body>
+<div class="wrap">
+<div class="eyebrow">GNSS AI Translation Engine &middot; local review</div>
 <h1>Post {self.post_id} &rarr; {html.escape(self.target_language)}</h1>
-{status_line}
+{status_pill}
 <div class="bar-outer"><div class="bar-inner" style="width:{pct}%"></div></div>
-<p>{done} / {self.total} blocks ({pct}%) &mdash; {elapsed:.0f}s elapsed</p>
-<p>{counts_html}</p>
+<div class="meta-line">{done} / {self.total} blocks ({pct}%) &middot; {elapsed:.0f}s elapsed</div>
+<div>{counts_html}</div>
 <table>
-<tr><th>Block</th><th>Type</th><th>Decision</th><th>Score</th><th>Source</th><th>Translation</th></tr>
+<tr><th style="width:16%">Block</th><th style="width:10%">Type</th><th style="width:12%">Decision</th><th style="width:6%">Score</th><th>Source</th><th>Translation</th></tr>
 {rows}
 </table>
-<p style="opacity:.5">{"All blocks shown" if self._finished_decision else f"Most recent {_MAX_ROWS_SHOWN} shown"}, newest first.</p>
+<p class="footnote">{"All blocks shown" if self._finished_decision else f"Most recent {_MAX_ROWS_SHOWN} shown"}, newest first.</p>
 {usage_section}
 {publish_section}
+</div>
 </body></html>"""
         self.html_path.write_text(page, encoding="utf-8")
