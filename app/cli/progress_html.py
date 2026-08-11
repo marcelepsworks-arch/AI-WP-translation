@@ -79,6 +79,28 @@ class ProgressTracker:
             self._publish_command = publish_command
             self._write()
 
+    def snapshot(self) -> dict:
+        """Plain-dict view of the current state, for API/JSON consumers
+        (`app.webui`) that want the same live progress `progress.html`
+        shows, without scraping HTML.
+        """
+        with self._lock:
+            done = len(self._completed)
+            counts: dict[str, int] = {}
+            for item in self._completed:
+                counts[item["decision"]] = counts.get(item["decision"], 0) + 1
+            return {
+                "post_id": self.post_id,
+                "target_language": self.target_language,
+                "total": self.total,
+                "done": done,
+                "percent": int(done / self.total * 100) if self.total else 100,
+                "elapsed_seconds": round(time.time() - self.started_at, 1),
+                "counts": counts,
+                "finished_decision": self._finished_decision,
+                "blocks": list(self._completed),
+            }
+
     def _write(self) -> None:
         done = len(self._completed)
         pct = int(done / self.total * 100) if self.total else 100

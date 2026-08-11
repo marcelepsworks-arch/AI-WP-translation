@@ -21,6 +21,10 @@ def get_pages(client: WordPressClient, per_page: int = 100) -> list[dict]:
     return client.get("/wp-json/wp/v2/pages", params={"per_page": per_page}).json()
 
 
+def get_posts(client: WordPressClient, per_page: int = 100) -> list[dict]:
+    return client.get("/wp-json/wp/v2/posts", params={"per_page": per_page}).json()
+
+
 def get_post_meta(client: WordPressClient, post_id: int) -> dict:
     return get_post(client, post_id).get("meta", {})
 

@@ -9,3 +9,7 @@ pytest-mock>=3.14.0
 # Used only by scripts/estimate_page_cost.py and one-off report verification.
 # PDF rendering itself uses Chromium (via Playwright), not a Python dependency.
 pypdf>=4.0.0
+
+# Local-only web UI (app/webui) -- binds to 127.0.0.1, never exposed.
+fastapi>=0.110.0
+uvicorn>=0.29.0
