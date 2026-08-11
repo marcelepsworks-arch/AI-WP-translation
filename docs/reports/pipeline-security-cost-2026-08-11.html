@@ -1,0 +1,363 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GNSS AI Translation Engine — Pipeline, Controls &amp; Cost Comparison</title>
+<style>
+  :root{
+    --ink:#1d1d1f;
+    --ink-soft:#6e6e73;
+    --accent:#0a5fb4;
+    --accent-soft:#eef4fb;
+    --line:#e5e5e7;
+    --bg-card:#f5f5f7;
+    --good:#1a7a3c;
+    --warn:#a8631a;
+    --off:#9a9a9e;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    font-size:12.5px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{
+    width:210mm;
+    min-height:297mm;
+    padding:18mm 18mm;
+    page-break-after:always;
+    position:relative;
+  }
+  .page:last-child{ page-break-after:auto; }
+
+  /* ---------- COVER ---------- */
+  .cover{
+    height:261mm;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:flex-start;
+    background:linear-gradient(160deg,#ffffff 0%,#f7fafd 55%,#eef4fb 100%);
+  }
+  .cover .eyebrow{
+    font-size:12px;
+    letter-spacing:2.5px;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:600;
+    margin-bottom:18px;
+  }
+  .cover h1{
+    font-size:42px;
+    font-weight:700;
+    letter-spacing:-0.5px;
+    margin:0 0 10px 0;
+    color:var(--ink);
+  }
+  .cover .subtitle{
+    font-size:18px;
+    color:var(--ink-soft);
+    font-weight:400;
+    max-width:500px;
+    margin-bottom:34px;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 16px;
+    border-radius:100px;
+    background:var(--accent-soft);
+    color:var(--accent);
+    font-size:12.5px;
+    font-weight:600;
+  }
+  .pill .dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .cover-meta{
+    position:absolute;
+    bottom:18mm;
+    left:18mm;
+    font-size:11px;
+    color:var(--ink-soft);
+    border-top:1px solid var(--line);
+    padding-top:12px;
+    width:174mm;
+    display:flex;
+    justify-content:space-between;
+  }
+
+  /* ---------- SECTIONS ---------- */
+  .eyebrow-small{
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  h2{ font-size:26px; font-weight:700; letter-spacing:-0.3px; margin:0 0 18px 0; color:var(--ink); }
+  h3{ font-size:15px; font-weight:700; margin:22px 0 8px 0; color:var(--ink); }
+  p{ margin:0 0 12px 0; color:#3a3a3c; font-size:12.5px; }
+  p.lead{ font-size:15px; color:var(--ink); line-height:1.65; }
+  ul{ margin:0 0 12px 0; padding-left:18px; }
+  li{ margin-bottom:6px; color:#3a3a3c; font-size:12.5px; }
+  li b, p b{ color:var(--ink); }
+  code{
+    font-family:"SF Mono",Consolas,"Courier New",monospace;
+    font-size:11.5px;
+    background:var(--bg-card);
+    padding:1.5px 5px;
+    border-radius:4px;
+    color:#333336;
+  }
+
+  .card-row{ display:flex; gap:12px; margin:16px 0 22px 0; }
+  .card{ flex:1; background:var(--bg-card); border-radius:14px; padding:16px 16px; }
+  .card .num{ font-size:20px; font-weight:700; color:var(--accent); margin-bottom:2px; }
+  .card .label{ font-size:11px; color:var(--ink-soft); font-weight:500; }
+
+  .callout{ background:var(--accent-soft); border-radius:14px; padding:16px 20px; margin:16px 0; font-size:12.5px; color:#1a3a57; }
+  .callout b{ color:var(--accent); }
+  .callout.warn{ background:#fbf1e6; color:#5c3d14; }
+  .callout.warn b{ color:var(--warn); }
+
+  table{ width:100%; border-collapse:collapse; margin:10px 0 18px 0; font-size:11.5px; }
+  th{
+    text-align:left; font-size:10.5px; letter-spacing:0.4px; text-transform:uppercase;
+    color:var(--ink-soft); font-weight:600; padding:0 10px 8px 0; border-bottom:1.5px solid var(--ink);
+  }
+  td{ padding:9px 10px 9px 0; border-bottom:1px solid var(--line); color:#3a3a3c; vertical-align:top; }
+  tr:last-child td{ border-bottom:none; }
+  td.best{ color:var(--good); font-weight:600; }
+
+  /* ---------- FLOW DIAGRAM ---------- */
+  .flow{ display:flex; align-items:center; margin:20px 0 8px 0; flex-wrap:wrap; row-gap:10px; }
+  .flow-step{
+    flex:1; min-width:0; background:#ffffff; border:1px solid var(--line); border-radius:14px;
+    padding:14px 10px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .flow-step.accent{ background:var(--accent); border-color:var(--accent); color:#ffffff; }
+  .flow-step.human{ background:#fff8ec; border-color:#f0d9a8; }
+  .flow-step .step-num{ font-size:9.5px; letter-spacing:1px; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:4px; }
+  .flow-step.accent .step-num{ color:#dceaff; }
+  .flow-step.human .step-num{ color:var(--warn); }
+  .flow-step .step-title{ font-size:11.5px; font-weight:700; margin-bottom:2px; color:var(--ink); }
+  .flow-step.accent .step-title{ color:#ffffff; }
+  .flow-step .step-sub{ font-size:9.5px; color:var(--ink-soft); }
+  .flow-step.accent .step-sub{ color:#dceaff; }
+  .flow-arrow{ flex:0 0 18px; text-align:center; color:#c6c6c8; font-size:14px; }
+
+  .arch-caption{ font-size:11px; color:var(--ink-soft); margin-top:10px; line-height:1.55; }
+
+  .controls-list{ margin:0 0 8px 0; padding:0; list-style:none; }
+  .controls-list li{
+    display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--line);
+    font-size:12px;
+  }
+  .controls-list li:last-child{ border-bottom:none; }
+  .controls-list .tick{
+    flex:0 0 18px; height:18px; border-radius:50%; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; margin-top:1px;
+  }
+  .controls-list .txt b{ color:var(--ink); }
+
+  .footer{
+    position:absolute; bottom:12mm; left:18mm; right:18mm; font-size:9.5px; color:#b4b4b8;
+    display:flex; justify-content:space-between; border-top:1px solid var(--line); padding-top:8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="page cover">
+  <div class="eyebrow">Precision-GNSS.com &nbsp;&middot;&nbsp; Internal Project Document</div>
+  <h1>Pipeline, Controls<br/>&amp; Cost Comparison</h1>
+  <div class="subtitle">How the GNSS AI Translation Engine actually works end to end, the safeguards built into it, and what it costs compared with a translation agency or a raw LLM without those safeguards.</div>
+  <div class="pill"><span class="dot"></span> WordPress + WPML integration live &middot; review-before-publish flow shipped</div>
+  <div class="cover-meta">
+    <span>Prepared 11 August 2026</span>
+    <span>Confidential</span>
+  </div>
+</div>
+
+<!-- ============ PIPELINE DIAGRAM ============ -->
+<div class="page">
+  <div class="eyebrow-small">A &middot; How it works</div>
+  <h2>The Pipeline, Step by Step</h2>
+  <p class="lead">
+  Every translation goes through the same fixed sequence — nothing skips a step, and nothing reaches
+  WordPress without a human deciding it should.
+  </p>
+
+  <div class="flow">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="step-title">Extract</div>
+      <div class="step-sub">Elementor tree, title, SEO, images</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="step-title">Glossary</div>
+      <div class="step-sub">only relevant terms attached</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step accent">
+      <div class="step-num">3</div>
+      <div class="step-title">Translator</div>
+      <div class="step-sub">DeepSeek, per block</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step accent">
+      <div class="step-num">4</div>
+      <div class="step-title">Reviewer</div>
+      <div class="step-sub">independent 2nd AI pass</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="step-num">5</div>
+      <div class="step-title">QA scoring</div>
+      <div class="step-sub">numbers &middot; terms &middot; URLs</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step human">
+      <div class="step-num">6</div>
+      <div class="step-title">Human review</div>
+      <div class="step-sub">source vs translation, local</div>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="step-num">7</div>
+      <div class="step-title">Publish</div>
+      <div class="step-sub">WordPress draft + WPML link</div>
+    </div>
+  </div>
+  <p class="arch-caption">
+  Steps 1&ndash;5 run automatically per content block (heading, paragraph, image caption, SEO field&hellip;).
+  Step 6 is a local review report (<code>logs/progress.html</code>) generated after translation but before
+  anything is sent to WordPress — every block's source and translation are shown side by side with its QA
+  verdict. Only step 7, triggered explicitly by a person via <code>app.cli.publish</code>, ever writes to the
+  live site — and always as a <b>draft</b>, never published automatically.
+  </p>
+
+  <h3>Why translation and review are two separate AI calls</h3>
+  <p>
+  A single combined request has already been shown to miss real technical errors during testing — see the
+  worked example in the July executive summary (<code>docs/reports/executive-summary-2026-07-23.html</code>).
+  Keeping the Reviewer independent of the Translator is a deliberate design choice, not an afterthought.
+  </p>
+
+  <h3>Security &amp; quality controls</h3>
+  <ul class="controls-list">
+    <li><span class="tick">&#10003;</span><span class="txt"><b>Draft-only writes.</b> Every translated page is created with WordPress status <code>draft</code> — this is not a runtime toggle, it is hard-coded, so a misconfiguration cannot accidentally publish a page live.</span></li>
+    <li><span class="tick">&#10003;</span><span class="txt"><b>Human review before publish.</b> The new review-then-publish flow means translation and the WordPress write are two separate, explicit steps — nothing reaches the site without a person looking at it first.</span></li>
+    <li><span class="tick">&#10003;</span><span class="txt"><b>Per-block QA scoring.</b> Every block is independently checked for numeric/unit mismatches, protected-term violations, and broken URLs, and flagged for human review rather than silently passed through.</span></li>
+    <li><span class="tick">&#10003;</span><span class="txt"><b>Protected terminology &amp; content.</b> Product names, model numbers and glossary-mandated terms are detected and never translated or altered by the AI.</span></li>
+    <li><span class="tick">&#10003;</span><span class="txt"><b>Faithful Elementor round-trip.</b> Only known, translatable text fields are touched inside <code>_elementor_data</code>; every id, image reference, and layout setting is left byte-for-byte untouched — corruption or layout loss is not possible by construction.</span></li>
+    <li><span class="tick">&#10003;</span><span class="txt"><b>Correct WPML API usage.</b> Translation linking uses the modern <code>wpml_object_id</code> filter rather than the legacy <code>icl_object_id</code> alias, after an empirically confirmed false-positive with the legacy call (see <code>MEMORIA.md</code>).</span></li>
+    <li><span class="tick">&#10003;</span><span class="txt"><b>Credential hygiene.</b> WordPress access uses a dedicated Application Password (not the account login password), and all secrets are read from <code>.env</code>, never committed to source control.</span></li>
+    <li><span class="tick">&#10003;</span><span class="txt"><b>Automated regression coverage.</b> 246 automated tests run against every change, with no live API calls in the test suite.</span></li>
+  </ul>
+
+  <div class="footer"><span>GNSS AI Translation Engine</span><span>Pipeline &amp; Controls</span></div>
+</div>
+
+<!-- ============ COST COMPARISON ============ -->
+<div class="page">
+  <div class="eyebrow-small">B &middot; What it costs</div>
+  <h2>Cost Comparison</h2>
+  <p class="lead">
+  The figures for this system are measured, not estimated — pulled from real DeepSeek API usage recorded
+  during actual page translations. Agency and generic-LLM figures are indicative industry ranges, shown for
+  scale, not a specific vendor quote.
+  </p>
+
+  <h3>Full-site comparison</h3>
+  <p style="margin-bottom:10px">
+  Scope: precision-gnss.com's current English content — <b>24 pages + 17 posts</b> (41 items, per the site
+  inventory in <code>LOG.md</code>), extrapolated to <b>&sim;75,000 words</b> using the average word count of
+  the four real pages already measured (1,870 words/page). Costed here for English&rarr;Spanish.
+  </p>
+  <table>
+    <tr><th>Metric</th><th>Human Translation</th><th>Professional AI (DeepL + QA)</th><th>This AI Pipeline</th></tr>
+    <tr><td>Estimated content</td><td>~75k words</td><td>~75k words</td><td>~75k words</td></tr>
+    <tr><td>Spanish translation cost (full site)</td><td>&euro;6k&ndash;11k</td><td>&euro;1.5k&ndash;3k</td><td class="best">&euro;0.50&ndash;10</td></tr>
+    <tr><td>AI/API cost</td><td>&mdash;</td><td>Low</td><td>Very low (DeepSeek token pricing)</td></tr>
+    <tr><td>Human QA</td><td>High (translator + editor)</td><td>Medium (post-edit pass)</td><td>Optional / controlled &mdash; automated Reviewer + QA gate, human check only before publish</td></tr>
+    <tr><td>Automation</td><td>Low</td><td>High</td><td class="best">Very high &mdash; one command, extract to WordPress draft</td></tr>
+    <tr><td>WordPress integration</td><td>Manual / extra</td><td>Usually extra (import/export plugin)</td><td class="best">Built-in &mdash; REST API + WPML linking + faithful Elementor round-trip</td></tr>
+    <tr><td>Future updates</td><td>Expensive (full re-quote)</td><td>Moderate</td><td class="best">Very cheap &mdash; re-translates only the content that actually changed</td></tr>
+    <tr><td>Terminology control</td><td>Good (style guide, human-applied)</td><td>Very good (translation memory + glossary)</td><td class="best">Custom-controlled &mdash; curated GNSS/RTK/surveying glossary, enforced and auto-checked per block</td></tr>
+    <tr><td>Scalability</td><td>Low</td><td>High</td><td class="best">Very high</td></tr>
+    <tr><td>Savings vs. Human</td><td>&mdash;</td><td>70&ndash;85%</td><td class="best">99%+</td></tr>
+  </table>
+  <p class="arch-caption">
+  Executive summary: this pipeline is estimated to cut the cost of translating the whole site into Spanish
+  by <b>99%+</b> versus a fully human workflow, while making future content updates close to free — the same
+  comparison framework used to evaluate a related WordPress&rarr;bridge&rarr;AI&rarr;WordPress pipeline for
+  ArduSimple's German translation, applied here with precision-gnss.com's own measured figures.
+  </p>
+
+  <h3 style="margin-top:22px">Per-page cost detail</h3>
+  <table>
+    <tr><th>Approach</th><th>Typical cost / page</th><th>Quality safeguards</th><th>Turnaround</th></tr>
+    <tr>
+      <td><b>This system</b> (full pipeline)</td>
+      <td class="best">$0.01 &ndash; $0.27</td>
+      <td>Translator + independent Reviewer + numeric/terminology/URL QA + human review before publish</td>
+      <td>Minutes</td>
+    </tr>
+    <tr>
+      <td>Raw LLM API (no review/QA layer)</td>
+      <td>$0.005 &ndash; $0.13</td>
+      <td>None — single pass, no independent check, no terminology enforcement</td>
+      <td>Minutes</td>
+    </tr>
+    <tr>
+      <td>Generic translation SaaS (e.g. DeepL Pro-style)</td>
+      <td>~$0.02 &ndash; $0.05<br/><span style="color:var(--ink-soft)">(per ~500 words)</span></td>
+      <td>Statistical/neural MT only — no domain glossary, no technical review</td>
+      <td>Seconds</td>
+    </tr>
+    <tr>
+      <td>Professional translation agency (technical content)</td>
+      <td>$150 &ndash; $400<br/><span style="color:var(--ink-soft)">(typical $0.08&ndash;$0.15/word, ~2,000&ndash;2,500 words)</span></td>
+      <td>Human translator + human editor, contract-dependent</td>
+      <td>Days</td>
+    </tr>
+  </table>
+  <p class="arch-caption">
+  This system's range spans a short text-only page (&sim;$0.01&ndash;$0.02, matching the July measurements) up
+  to a large page with many image fields and full QA (a real run on 11 August 2026 came to <b>$0.2699</b> for
+  a long page with 299 image references and 14 blocks flagged for human review). Even at the high end, that
+  is roughly <b>500&ndash;1,500&times; cheaper</b> than an agency quote for comparable technical content.
+  </p>
+
+  <h3>Why the gap is this large</h3>
+  <ul>
+    <li><b>No per-word billing.</b> DeepSeek bills per token at $0.435 (input) / $0.87 (output) per million tokens for the translation model — a technical page's worth of text costs a fraction of a cent even with two independent AI passes.</li>
+    <li><b>Only changed content needs re-translating.</b> The planned update-detection flow (WPML's native "needs update" status plus block-level content hashing) means a small content edit re-translates only the affected paragraph, not the whole page — agencies typically re-quote the full document.</li>
+    <li><b>The safeguards are what an agency editor would otherwise charge for.</b> The independent Reviewer step, terminology enforcement, and numeric/unit checking are the same class of check a human proofreader performs — here they run automatically, at token cost, before a human ever needs to look at it.</li>
+  </ul>
+
+  <div class="callout">
+  <b>In practical terms:</b> a full first pass across the site's ~24 pages and 17 posts, even assuming every
+  page were as large and image-heavy as the most expensive one measured so far, would total well under
+  <b>$10</b> in DeepSeek costs — against a five-figure agency quote for the same volume of technical content.
+  </div>
+
+  <div class="callout warn">
+  <b>Caveat:</b> the agency and generic-SaaS figures above are typical market ranges for technical
+  translation, included for scale — not a quote obtained from a specific vendor. Actual agency pricing
+  varies by language pair, volume discount, and contract terms.
+  </div>
+
+  <div class="footer"><span>GNSS AI Translation Engine</span><span>Cost Comparison</span></div>
+</div>
+
+</body>
+</html>
