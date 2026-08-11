@@ -31,6 +31,14 @@ def _block_type_for_tag(tag_name: str) -> str:
 
 
 def _is_inside_text_block(tag: Tag) -> bool:
+    """True if `tag` is nested inside another p/li/blockquote/heading. Real
+    (if malformed) content has been observed with a <p> nested inside
+    another block tag -- e.g. pasted from an external editor. Without this
+    guard, `find_all(selector)` matches both the outer and the inner tag,
+    so the outer block's raw HTML already contains the untranslated inner
+    tag *and* a second, separate block gets created for the same text --
+    duplicating that paragraph in the reassembled/translated output.
+    """
     return any(
         parent.name in _TEXT_BLOCK_TAGS or parent.name in _HEADING_TAGS
         for parent in tag.parents
@@ -69,7 +77,7 @@ def extract_blocks(html: str, id_prefix: str = "block") -> list[ContentBlock]:
             )
             continue
 
-        if tag.name in _CTA_TAGS and _is_inside_text_block(tag):
+        if _is_inside_text_block(tag):
             continue  # already covered by the enclosing paragraph/list item/heading
 
         text = tag.get_text(separator=" ", strip=True)

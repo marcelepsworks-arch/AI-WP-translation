@@ -55,6 +55,19 @@ def test_extract_blocks_does_not_duplicate_link_text_already_inside_paragraph():
     assert blocks[0].source == 'Read the <a href="/docs/">documentation</a> for details.'
 
 
+def test_extract_blocks_does_not_duplicate_nested_paragraph():
+    # Found empirically 2026-08-11 against a real Elementor widget: pasted
+    # content occasionally has a <p> nested inside another <p>/<li> (invalid
+    # HTML, but real). Without a nesting guard, find_all() matched both the
+    # outer and the inner tag, producing two blocks for the same text --
+    # duplicated paragraphs in the reassembled/translated output.
+    html = '<p>Outer wrapper. <p>Eliminating Vulnerability: young saplings are fragile.</p></p>'
+
+    blocks = extract_blocks(html)
+
+    assert len(blocks) == 1
+
+
 def test_extract_blocks_preserves_bold_and_emphasis_tags_in_paragraph_source():
     html = "<p>In simple terms, <strong>RTK is very accurate</strong> and reliable.</p>"
 
