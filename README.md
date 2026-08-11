@@ -20,7 +20,7 @@ This isn't theoretical. During development, the Translator alone mistranslated *
 
 ```mermaid
 flowchart LR
-    WP["WordPress\nPrecision-GNSS.com\nWPML + Elementor + Yoast"] -->|REST API| Bridge["gnss-bridge\nlightweight mu-plugin\n(designed, not yet deployed)"]
+    WP["WordPress\nPrecision-GNSS.com\nWPML + Elementor + Yoast"] -->|REST API| Bridge["gnss-bridge\nlightweight mu-plugin\ndeployed to production"]
     Bridge --> Engine["Translation Engine\nPython service"]
     Engine --> DS["DeepSeek API"]
 ```
@@ -65,6 +65,21 @@ Three concerns are kept deliberately apart: **WordPress never talks to DeepSeek 
 
 ---
 
+## Security & Quality Controls
+
+| Control | What it prevents |
+|---|---|
+| Draft-only writes, hard-coded (not a config toggle) | A misconfiguration accidentally publishing a page live |
+| Human review before publish (`--review` → `app/cli/publish.py`) | Anything reaching the site without a person looking at source vs. translation first |
+| Per-block QA scoring (numbers/units, protected terms, URLs, Reviewer verdict) | Silent numeric drift, dropped warnings, broken links |
+| Protected terminology & content detection | The AI translating product names, model numbers, or glossary-mandated terms |
+| Faithful Elementor round-trip — only known text fields touched | Layout, image, or structural corruption in `_elementor_data` |
+| `wpml_object_id` (modern filter), not legacy `icl_object_id` | A confirmed false-positive where the legacy filter reported a translation existed when it didn't |
+| WordPress Application Password (not account login password), secrets via `.env` | Credential exposure / committing secrets to source control |
+| 246 automated tests, no live API calls in CI | Regressions shipping unnoticed |
+
+---
+
 ## Cost
 
 Figures below are **measured, not estimated** — computed by scraping real Precision-GNSS.com pages and running them through the project's actual `chunk_text()` splitter and real system-prompt sizes, using DeepSeek's published pricing (`deepseek-v4-pro`: $0.435 / $0.87 per 1M input/output tokens).
@@ -80,6 +95,22 @@ Figures below are **measured, not estimated** — computed by scraping real Prec
 Using the cheaper `deepseek-v4-flash` model for the two QA calls (keeping `deepseek-v4-pro` for translation itself) cuts the full-pipeline cost by roughly a third, with no change to translation quality since only the review layer changes model.
 
 Full methodology and page-by-page figures: [`docs/reports/executive-summary-2026-07-23.html`](docs/reports/executive-summary-2026-07-23.html) · reproducible via [`scripts/estimate_page_cost.py`](scripts/estimate_page_cost.py).
+
+### Full-site comparison
+
+Scope: precision-gnss.com's current English content — 24 pages + 17 posts (~75,000 words, extrapolated from the pages already measured), costed here for English → Spanish.
+
+| Metric | Human Translation | Professional AI (DeepL + QA) | This AI Pipeline |
+|---|---|---|---|
+| Spanish translation cost (full site) | €6k–11k | €1.5k–3k | **€0.50–10** |
+| Human QA | High (translator + editor) | Medium (post-edit pass) | Optional/controlled — automated Reviewer + QA gate, human check only before publish |
+| Automation | Low | High | **Very high** — one command, extract to WordPress draft |
+| WordPress integration | Manual/extra | Usually extra (import/export plugin) | **Built-in** — REST API + WPML linking + faithful Elementor round-trip |
+| Future updates | Expensive (full re-quote) | Moderate | **Very cheap** — re-translates only content that actually changed |
+| Terminology control | Good (style guide, human-applied) | Very good (translation memory + glossary) | **Custom-controlled** — curated GNSS/RTK/surveying glossary, enforced per block |
+| Savings vs. human | — | 70–85% | **99%+** |
+
+Agency/SaaS figures are indicative market ranges for technical translation, shown for scale — not a vendor quote. Full breakdown: [`docs/reports/pipeline-security-cost-2026-08-11.html`](docs/reports/pipeline-security-cost-2026-08-11.html).
 
 ---
 
@@ -102,21 +133,24 @@ Full methodology and page-by-page figures: [`docs/reports/executive-summary-2026
 
 ## Project Status
 
+*Updated 11 August 2026 — see [`docs/reports/pipeline-security-cost-2026-08-11.html`](docs/reports/pipeline-security-cost-2026-08-11.html) for the full pipeline diagram, security/quality controls, and cost comparison.*
+
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | WordPress/WPML environment audit | 🟡 Mostly done — **WPML is not installed on staging**, blocking phases 1, 2.4, 8, 9 |
-| 1 | `gnss-bridge` connector plugin | ⚪ Designed, not deployed |
-| 2 | WordPress connector | 🟢 Read side done and validated against real staging content |
-| 3 | Content extraction (posts, pages, WooCommerce products) | 🟢 Complete — 171 blocks extracted from a real page including excerpt, social SEO fields, featured image, and categories |
-| 4 | Translator, Reviewer, Terminology Validator, chunking | 🟢 Complete — 60+ tests, validated against the real DeepSeek API |
-| 5 | Glossary Engine | 🟢 Complete (24-term seed glossary, pending expansion with real site terminology) |
-| 6 | Translation memory & change detection | 🟢 Complete |
+| 0 | WordPress/WPML environment audit | 🟢 Complete — production access confirmed |
+| 1 | `gnss-bridge` connector plugin | 🟢 Deployed to production, verified working |
+| 2 | WordPress connector | 🟢 Complete |
+| 3 | Content extraction (posts, pages, WooCommerce products) | 🟢 Complete — faithful Elementor round-trip (layout, images, inline formatting) |
+| 4 | Translator, Reviewer, Terminology Validator, chunking | 🟢 Complete — validated against the real DeepSeek API |
+| 5 | Glossary Engine | 🟢 Complete (16 curated GNSS/RTK/surveying terms) |
+| 6 | Translation memory & change detection | 🟡 Designed, not built — next up |
 | 7 | QA scoring engine | 🟢 Complete |
-| 8 | WPML orchestration, end to end | 🟢 **Complete, verified against real production** (`precision-gnss.com`) — `app/cli/translate.py` runs Extract → Glossary → DeepSeek → QA → draft creation → `link-translation` end to end, now including a faithful Elementor round-trip (layout, images, inline formatting — see Phase 3.3). |
-| 9 | Pilot on 5 real pages | 🔴 Blocked — needs WPML |
+| 8 | WPML orchestration, end to end | 🟢 **Complete, verified against real production** (`precision-gnss.com`) — `app/cli/translate.py` runs Extract → Glossary → DeepSeek → QA → draft creation → `link-translation` end to end. |
+| 9 | Pilot on 5 real pages | 🟡 In progress — 1 of 5 published as draft, pending native-Spanish human review |
 | 10 | Scale-out & scheduled sync | ⚪ Not started |
+| — | Review-then-publish flow *(added, outside the original 10 phases)* | 🟢 Complete — local side-by-side review report (`logs/progress.html`) + `app/cli/publish.py` writes the approved draft with no extra DeepSeek cost |
 
-**244 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md).
+**246 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md) / [`MEMORIA.md`](MEMORIA.md).
 
 ---
 

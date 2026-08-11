@@ -359,5 +359,42 @@
   <div class="footer"><span>GNSS AI Translation Engine</span><span>Cost Comparison</span></div>
 </div>
 
+<!-- ============ IMPLEMENTATION STATUS ============ -->
+<div class="page">
+  <div class="eyebrow-small">Where things stand — updated</div>
+  <h2>Implementation Status</h2>
+  <p>
+  The July 23 report's status table is now out of date — staging/production access was granted and every
+  WordPress-facing phase below has since gone live and been validated against the real site. This table
+  replaces it.
+  </p>
+
+  <table>
+    <tr><th>Phase</th><th>Scope</th><th>Status</th></tr>
+    <tr><td>0</td><td>WordPress/WPML environment audit</td><td class="status done"><span class="dot"></span>Complete — production access confirmed</td></tr>
+    <tr><td>1</td><td>gnss-bridge connector plugin</td><td class="status done"><span class="dot"></span>Deployed to production, verified working</td></tr>
+    <tr><td>2</td><td>WordPress connector (Python)</td><td class="status done"><span class="dot"></span>Complete</td></tr>
+    <tr><td>3</td><td>Content extraction (Elementor/Yoast)</td><td class="status done"><span class="dot"></span>Complete — faithful Elementor round-trip (3.3)</td></tr>
+    <tr><td>4</td><td>Translator, Reviewer, Terminology Validator, chunking</td><td class="status done"><span class="dot"></span>Complete — real-API validated</td></tr>
+    <tr><td>5</td><td>Glossary engine</td><td class="status done"><span class="dot"></span>Complete — 16 curated terms</td></tr>
+    <tr><td>6</td><td>Translation memory &amp; change detection</td><td class="status pending"><span class="dot"></span>Designed, not built — see next steps</td></tr>
+    <tr><td>7</td><td>QA scoring engine</td><td class="status done"><span class="dot"></span>Complete — numeric/terminology/URL checks live</td></tr>
+    <tr><td>8</td><td>WPML orchestration, end to end</td><td class="status done"><span class="dot"></span>Complete — verified in production 6 Aug 2026</td></tr>
+    <tr><td>9</td><td>Pilot on 5 real pages</td><td class="status pending"><span class="dot"></span>In progress — 1 of 5 published as draft (Contact Us), plus repeated large-page testing (Precision Agriculture)</td></tr>
+    <tr><td>10</td><td>Scale-out &amp; scheduled sync</td><td class="status pending"><span class="dot"></span>Not started</td></tr>
+    <tr><td>&mdash;</td><td>Review-then-publish flow <i>(added, not in original 10 phases)</i></td><td class="status done"><span class="dot"></span>Complete — local review report + <code>app.cli.publish</code></td></tr>
+  </table>
+
+  <h3>What's next</h3>
+  <ul>
+    <li><b>Finish the Phase 9 pilot</b> — 4 pages remaining, each needs a native-Spanish human review of its draft before being considered approved (automatic QA does not replace this).</li>
+    <li><b>Phase 6, update detection</b> — read WPML's native per-translation "needs update" status and add block-level content hashing, so an edit to the English source re-translates only the changed text instead of the whole page.</li>
+    <li><b>Scale-out (Phase 10)</b> — once the pilot is signed off, run the pipeline across the remaining pages/posts and set up a recurring check for content that needs re-translation.</li>
+  </ul>
+  <p class="arch-caption">Full detail is tracked in <code>ROADMAP.md</code>, <code>PLA-ACCIO.md</code> and <code>LOG.md</code>/<code>MEMORIA.md</code> in the project repository.</p>
+
+  <div class="footer"><span>GNSS AI Translation Engine</span><span>Implementation Status</span></div>
+</div>
+
 </body>
 </html>
