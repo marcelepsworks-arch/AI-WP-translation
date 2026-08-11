@@ -96,6 +96,19 @@ class PageTranslationResult(BaseModel):
     translated_post_id: int | None = None
 
 
+class PageReview(BaseModel):
+    """Everything `app.cli.publish` needs to write a reviewed translation to
+    WordPress without re-calling DeepSeek: the exact WP payload built at
+    translation time, plus the block-level results for reference.
+    """
+
+    post_id: int
+    post_type: str
+    target_language: str
+    payload: dict
+    blocks: list[BlockResult]
+
+
 def _protected_terms(glossary_entries: list[GlossaryEntry], language: str) -> list[str]:
     return [entry.target for entry in glossary_entries if entry.language == language and entry.target == entry.source]
 
@@ -178,7 +191,8 @@ def translate_blocks(
         print(f"[{index + 1}/{total}] {block.content_id} -> {decision}", flush=True)
         if progress is not None:
             progress.record(
-                block.content_id, block.type, decision, result.qa.score if result.qa else None, usage=deepseek.usage
+                block.content_id, block.type, decision, result.qa.score if result.qa else None,
+                usage=deepseek.usage, source=block.source, translation=result.translation,
             )
         return index, result
 
@@ -217,6 +231,67 @@ def reassemble_body_html(blocks: list[ContentBlock], results_by_id: dict[str, Bl
     return "\n".join(parts)
 
 
+def write_and_link_translation(
+    wp_client: WordPressClient,
+    endpoint: str,
+    payload: dict,
+    post_id: int,
+    post_type: str,
+    target_language: str,
+) -> int:
+    """POSTs the already-built payload as a new draft translation and links
+    it to the source post's WPML trid. Shared by `translate_page` (immediate
+    write) and `app.cli.publish` (write deferred until a human reviews the
+    saved review artifact first).
+    """
+    translated_post_id = wp_client.post(endpoint, json=payload).json()["id"]
+    logger.info(
+        "created draft %s %d as %s translation of %s %d",
+        post_type, translated_post_id, target_language, post_type, post_id,
+    )
+
+    status = wp_wpml.get_wpml_status(wp_client, post_id)
+    trid = status.get("trid")
+    if trid is not None:
+        wp_wpml.link_translation(
+            wp_client,
+            element_id=translated_post_id,
+            trid=int(trid),
+            language_code=target_language,
+            source_language_code=status.get("language_code") or "en",
+        )
+        logger.info("linked %s %d to trid %s as %s", post_type, translated_post_id, trid, target_language)
+    else:
+        logger.warning(
+            "no trid found for %s %d — draft %d created but NOT linked in WPML, needs manual linking",
+            post_type, post_id, translated_post_id,
+        )
+    return translated_post_id
+
+
+def save_review(
+    review_json_path: Path,
+    post_id: int,
+    post_type: str,
+    target_language: str,
+    payload: dict,
+    results: list[BlockResult],
+) -> None:
+    """Saves everything `app.cli.publish` needs to write this translation to
+    WordPress later, without calling DeepSeek again. The human review itself
+    happens by reading the accompanying progress.html (source/translation
+    side by side, QA decision per block) -- this file is just the "apply"
+    data.
+    """
+    review_json_path.parent.mkdir(parents=True, exist_ok=True)
+    review_json_path.write_text(
+        PageReview(
+            post_id=post_id, post_type=post_type, target_language=target_language, payload=payload, blocks=results
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+
 def translate_page(
     wp_client: WordPressClient,
     deepseek: DeepSeekClient,
@@ -227,6 +302,7 @@ def translate_page(
     dry_run: bool = True,
     max_workers: int = 1,
     progress_html_path: Path | None = None,
+    review_json_path: Path | None = None,
 ) -> PageTranslationResult:
     logger.info("fetching %s %d for translation to %s", post_type, post_id, target_language)
     get_fn = wp_content.get_page if post_type == "page" else wp_content.get_post
@@ -265,26 +341,9 @@ def translate_page(
             post_type, post_id, deepseek.usage, estimate_cost_usd(deepseek.usage),
         )
 
-    if dry_run:
-        logger.info("dry-run: nothing written for %s %d", post_type, post_id)
-        if progress is not None:
-            progress.finish(decision)
-        return PageTranslationResult(
-            post_id=post_id,
-            post_type=post_type,
-            target_language=target_language,
-            blocks=results,
-            overall_decision=decision,
-            written=False,
-        )
-
-    if decision != "auto_approve":
-        flagged = [r.content_id for r in results if r.qa is not None and r.qa.decision != "auto_approve"]
-        logger.warning(
-            "writing %s %d as draft despite %s decision — %d block(s) need human review before publishing: %s",
-            post_type, post_id, decision, len(flagged), flagged,
-        )
-
+    # Payload is always built (even in dry-run/review) since review mode
+    # needs the exact WP-write payload to save for later publishing --
+    # building it costs nothing extra, it just doesn't get sent anywhere yet.
     title_result = next((r for r in results if r.type == "title"), None)
     excerpt_result = next((r for r in results if r.type == "excerpt"), None)
 
@@ -313,28 +372,34 @@ def translate_page(
         payload["excerpt"] = excerpt_result.translation
 
     endpoint = f"/wp-json/wp/v2/{'pages' if post_type == 'page' else 'posts'}"
-    translated_post_id = wp_client.post(endpoint, json=payload).json()["id"]
-    logger.info(
-        "created draft %s %d as %s translation of %s %d",
-        post_type, translated_post_id, target_language, post_type, post_id,
-    )
 
-    status = wp_wpml.get_wpml_status(wp_client, post_id)
-    trid = status.get("trid")
-    if trid is not None:
-        wp_wpml.link_translation(
-            wp_client,
-            element_id=translated_post_id,
-            trid=int(trid),
-            language_code=target_language,
-            source_language_code=status.get("language_code") or "en",
+    publish_command = None
+    if review_json_path is not None:
+        save_review(review_json_path, post_id, post_type, target_language, payload, results)
+        publish_command = f"python -m app.cli.publish --review {review_json_path}"
+        logger.info("saved review artifact for %s %d to %s", post_type, post_id, review_json_path)
+
+    if dry_run:
+        logger.info("dry-run: nothing written for %s %d", post_type, post_id)
+        if progress is not None:
+            progress.finish(decision, publish_command=publish_command)
+        return PageTranslationResult(
+            post_id=post_id,
+            post_type=post_type,
+            target_language=target_language,
+            blocks=results,
+            overall_decision=decision,
+            written=False,
         )
-        logger.info("linked %s %d to trid %s as %s", post_type, translated_post_id, trid, target_language)
-    else:
+
+    if decision != "auto_approve":
+        flagged = [r.content_id for r in results if r.qa is not None and r.qa.decision != "auto_approve"]
         logger.warning(
-            "no trid found for %s %d — draft %d created but NOT linked in WPML, needs manual linking",
-            post_type, post_id, translated_post_id,
+            "writing %s %d as draft despite %s decision — %d block(s) need human review before publishing: %s",
+            post_type, post_id, decision, len(flagged), flagged,
         )
+
+    translated_post_id = write_and_link_translation(wp_client, endpoint, payload, post_id, post_type, target_language)
 
     if progress is not None:
         progress.finish(decision)
@@ -395,6 +460,16 @@ def main() -> None:
         action="store_true",
         help="Skip writing logs/progress.html (the local self-refreshing progress page)",
     )
+    parser.add_argument(
+        "--review",
+        action="store_true",
+        help=(
+            "Translate and save a review artifact (logs/review_<post-id>_<language>.json) instead of "
+            "writing to WordPress. Open progress.html to compare source/translation per block, then run "
+            "the printed `python -m app.cli.publish ...` command to write the approved draft (no extra "
+            "DeepSeek cost). Implies --dry-run."
+        ),
+    )
     args = parser.parse_args()
 
     settings = load_settings()
@@ -411,6 +486,10 @@ def main() -> None:
     if progress_html_path:
         print(f"Live progress: open {progress_html_path.resolve()} in a browser (auto-refreshes every 2s)")
 
+    review_json_path = (
+        Path(f"logs/review_{args.post_id}_{args.language}.json") if args.review else None
+    )
+
     result = translate_page(
         wp_client,
         deepseek,
@@ -418,9 +497,10 @@ def main() -> None:
         args.post_id,
         args.post_type,
         args.language,
-        dry_run=args.dry_run,
+        dry_run=args.dry_run or args.review,
         max_workers=args.workers,
         progress_html_path=progress_html_path,
+        review_json_path=review_json_path,
     )
 
     print(f"Post {result.post_id} ({result.post_type}) -> {result.target_language}")

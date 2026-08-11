@@ -34,6 +34,7 @@ class ProgressTracker:
         self._lock = threading.Lock()
         self._completed: list[dict] = []
         self._finished_decision: str | None = None
+        self._publish_command: str | None = None
         self._usage: dict[str, dict[str, int]] = {}
         self.html_path.parent.mkdir(parents=True, exist_ok=True)
         self._write()
@@ -45,10 +46,19 @@ class ProgressTracker:
         decision: str,
         score: int | None,
         usage: dict[str, dict[str, int]] | None = None,
+        source: str = "",
+        translation: str = "",
     ) -> None:
         with self._lock:
             self._completed.append(
-                {"content_id": content_id, "type": block_type, "decision": decision, "score": score}
+                {
+                    "content_id": content_id,
+                    "type": block_type,
+                    "decision": decision,
+                    "score": score,
+                    "source": source,
+                    "translation": translation,
+                }
             )
             if usage is not None:
                 # Snapshot, not a live reference -- DeepSeekClient.usage keeps
@@ -56,9 +66,10 @@ class ProgressTracker:
                 self._usage = {model: dict(counts) for model, counts in usage.items()}
             self._write()
 
-    def finish(self, overall_decision: str) -> None:
+    def finish(self, overall_decision: str, publish_command: str | None = None) -> None:
         with self._lock:
             self._finished_decision = overall_decision
+            self._publish_command = publish_command
             self._write()
 
     def _write(self) -> None:
@@ -70,14 +81,19 @@ class ProgressTracker:
         for item in self._completed:
             counts[item["decision"]] = counts.get(item["decision"], 0) + 1
 
+        # While running, only the tail is shown (live feed). Once finished,
+        # this file *is* the review report, so every block must be visible.
+        shown = self._completed if self._finished_decision else self._completed[-_MAX_ROWS_SHOWN:]
         rows = "\n".join(
             f'<tr class="{html.escape(item["decision"])}">'
             f'<td>{html.escape(item["content_id"])}</td>'
             f'<td>{html.escape(item["type"])}</td>'
             f'<td>{html.escape(item["decision"])}</td>'
             f'<td>{item["score"] if item["score"] is not None else "-"}</td>'
+            f'<td class="text">{html.escape(item["source"])}</td>'
+            f'<td class="text">{html.escape(item["translation"])}</td>'
             f"</tr>"
-            for item in reversed(self._completed[-_MAX_ROWS_SHOWN:])
+            for item in reversed(shown)
         )
         counts_html = " ".join(f'<span class="badge {k}">{k}: {v}</span>' for k, v in counts.items())
 
@@ -104,6 +120,13 @@ class ProgressTracker:
             if self._finished_decision
             else '<p class="status">Running…</p>'
         )
+        publish_section = ""
+        if self._finished_decision and self._publish_command:
+            publish_section = f"""
+<h2 style="font-size:1rem;margin-top:1.5rem;">Review this page, then publish it</h2>
+<p>Nothing has been written to WordPress yet. Read through the source/translation columns above; if it looks
+good, run this command to publish the draft and link it in WPML (no re-translation, no extra DeepSeek cost):</p>
+<pre style="background:#000;padding:.8rem;border-radius:6px;overflow-x:auto;">{html.escape(self._publish_command)}</pre>"""
         refresh_tag = "" if self._finished_decision else '<meta http-equiv="refresh" content="2">'
 
         page = f"""<!doctype html>
@@ -120,8 +143,9 @@ h1 {{ font-size: 1.2rem; }}
 .badge.auto_approve {{ background: #2e7d32; }}
 .badge.human_review {{ background: #b8860b; }}
 .badge.reject {{ background: #b71c1c; }}
-table {{ border-collapse: collapse; width: 100%; margin-top: 1rem; }}
+table {{ border-collapse: collapse; width: 100%; margin-top: 1rem; table-layout: fixed; }}
 td, th {{ padding: .3rem .6rem; border-bottom: 1px solid #333; text-align: left; font-size: .9rem; }}
+td.text {{ white-space: pre-wrap; word-break: break-word; width: 32%; }}
 tr.reject {{ background: #3a1414; }}
 tr.human_review {{ background: #3a2f14; }}
 </style>
@@ -133,10 +157,11 @@ tr.human_review {{ background: #3a2f14; }}
 <p>{done} / {self.total} blocks ({pct}%) &mdash; {elapsed:.0f}s elapsed</p>
 <p>{counts_html}</p>
 <table>
-<tr><th>Block</th><th>Type</th><th>Decision</th><th>Score</th></tr>
+<tr><th>Block</th><th>Type</th><th>Decision</th><th>Score</th><th>Source</th><th>Translation</th></tr>
 {rows}
 </table>
-<p style="opacity:.5">Most recent {_MAX_ROWS_SHOWN} shown, newest first.</p>
+<p style="opacity:.5">{"All blocks shown" if self._finished_decision else f"Most recent {_MAX_ROWS_SHOWN} shown"}, newest first.</p>
 {usage_section}
+{publish_section}
 </body></html>"""
         self.html_path.write_text(page, encoding="utf-8")
