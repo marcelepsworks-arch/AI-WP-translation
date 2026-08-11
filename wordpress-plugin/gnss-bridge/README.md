@@ -13,7 +13,10 @@ in the main repo for the full design rationale.
 - `GET /wp-json/gnss-bridge/v1/translation-status/{post_id}` — read-only,
   reports `trid`/`language_code` via `wpml_element_language_details`, and
   (with `?language_code=es`) whether a translation already exists via
-  `icl_object_id`.
+  `wpml_object_id`, plus `needs_update` — WPML's own per-language status
+  (`icl_translations.status`, read-only `SELECT`), used by
+  `app/cli/sync.py` to decide between creating a new translation and
+  re-translating only the blocks that changed.
 - `register_post_meta()` for the three Yoast SEO fields (`_yoast_wpseo_title`,
   `_yoast_wpseo_metadesc`, `_yoast_wpseo_focuskw`) — not exposed via REST by
   Yoast by default.
