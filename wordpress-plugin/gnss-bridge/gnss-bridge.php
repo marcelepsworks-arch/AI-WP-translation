@@ -213,6 +213,28 @@ function gnss_bridge_register_yoast_meta(): void {
 }
 
 /**
+ * Registers `_gnss_block_hashes` for REST read/write -- a plain JSON string
+ * the Python engine writes on every translation, mapping each block's
+ * content_id to its source-text hash and translation, so a later sync run
+ * can tell which blocks actually changed (`app/cli/sync.py`, ROADMAP.md
+ * FASE 6). Same simple string-meta shape as the Yoast fields above; without
+ * this registration WordPress silently drops the field on write, since
+ * REST meta updates are ignored for unregistered keys.
+ */
+add_action('init', 'gnss_bridge_register_sync_meta');
+
+function gnss_bridge_register_sync_meta(): void {
+    foreach (['post', 'page'] as $post_type) {
+        register_post_meta($post_type, '_gnss_block_hashes', [
+            'show_in_rest'  => true,
+            'single'        => true,
+            'type'          => 'string',
+            'auth_callback' => 'gnss_bridge_permission_check',
+        ]);
+    }
+}
+
+/**
  * Registers Elementor's own layout meta fields for REST read/write.
  * `_elementor_data` is not exposed via REST by default (confirmed empirically
  * — AUDITORIA-INICIAL.md §0.5) even though it holds the page's real content
