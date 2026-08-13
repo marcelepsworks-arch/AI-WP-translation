@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ca">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>GNSS AI Translation Engine — Dashboard</title>
@@ -113,47 +113,47 @@
   </div>
 
   <details class="security-panel">
-    <summary>Seguretat i fiabilitat — què cal saber abans de fer clic</summary>
+    <summary>Security & reliability — what to know before you click</summary>
     <div class="security-body">
-      <p><b>Pot al·lucinar la IA?</b> Sí, és un risc real de qualsevol traductor amb LLM — no ho amaguem. Per això
-      cada traducció passa per un Traductor <i>i</i> un Revisor independents (dues crides separades), més tres
-      verificacions mecàniques (nombres/unitats, terminologia protegida, URLs).</p>
-      <p><b>Es publica sol, sense revisió humana?</b> Per defecte, mai — tota traducció queda com a esborrany
-      pendent de revisió. Existeix un mode autònom opcional (<code>AUTO_PUBLISH_MODE</code> a <code>.env</code>),
-      desactivat de fàbrica, que l'operador ha d'activar explícitament — quan ho està, ho veuràs sempre com un
-      avís vermell a dalt de tot d'aquesta pàgina, mai en silenci.</p>
-      <p><b>Pot fer un SQL injection o similar?</b> Pràcticament no, per arquitectura: aquest motor no té cap
-      connexió a base de dades, només parla amb WordPress via la seva API REST autenticada — el mateix camí que
-      faria servir un editor humà.</p>
-      <p><b>I si la IA generés HTML perillós (<code>&lt;script&gt;</code>)?</b> Es filtra amb una llista blanca
-      d'etiquetes abans que arribi enlloc — <code>app/qa/html_sanitizer.py</code>.</p>
-      <p><b>Aquest panell mateix:</b> només escolta a <code>127.0.0.1</code> (mai accessible des de fora del teu
-      ordinador) i cada acció requereix un token secret generat a cada arrencada, perquè cap altra pàgina web
-      oberta en una altra pestanya pugui disparar accions aquí sense que tu ho sàpigues.</p>
-      <p class="security-footer">Detall complet i honest (inclosos els límits reals, no només el que funciona bé)
-      al <a class="link" href="https://github.com/marcelepsworks-arch/AI-WP-translation#security--quality-controls" target="_blank">README del projecte</a>.</p>
+      <p><b>Can the AI hallucinate?</b> Yes, that's a real risk with any LLM-based translator — we don't hide it.
+      That's why every translation goes through an independent Translator <i>and</i> Reviewer (two separate
+      calls), plus three mechanical checks (numbers/units, protected terminology, URLs).</p>
+      <p><b>Does it publish itself, without human review?</b> By default, never — every translation is written as
+      a draft pending review. There is an optional autonomous mode (<code>AUTO_PUBLISH_MODE</code> in
+      <code>.env</code>), off by default, that an operator must enable explicitly — whenever it's on, you'll
+      always see a red banner at the top of this page, never silently.</p>
+      <p><b>Could it cause a SQL injection or similar?</b> Practically no, by architecture: this engine has no
+      database connection at all — it only talks to WordPress through its authenticated REST API, the same path
+      a human editor would use.</p>
+      <p><b>What if the AI generated dangerous HTML (<code>&lt;script&gt;</code>)?</b> It's filtered through an
+      allowlist before it reaches anywhere — <code>app/qa/html_sanitizer.py</code>.</p>
+      <p><b>This dashboard itself:</b> it only listens on <code>127.0.0.1</code> (never reachable from outside
+      your machine) and every action requires a secret token generated at each startup, so no other webpage open
+      in another tab can trigger actions here without you knowing.</p>
+      <p class="security-footer">Full, honest detail (including real limits, not just what works well) in the
+      <a class="link" href="https://github.com/marcelepsworks-arch/AI-WP-translation#security--quality-controls" target="_blank">project README</a>.</p>
     </div>
   </details>
 
   <div class="toolbar">
     <span id="summary" class="type-tag"></span>
-    <button class="btn-secondary" onclick="loadPages()">Actualitzar llista</button>
+    <button class="btn-secondary" onclick="loadPages()">Refresh list</button>
   </div>
 
   <table id="pages-table" style="display:none">
-    <tr><th style="width:40%">Títol</th><th style="width:10%">Tipus</th><th style="width:20%">Estat</th><th>Accions</th></tr>
+    <tr><th style="width:40%">Title</th><th style="width:10%">Type</th><th style="width:20%">Status</th><th>Actions</th></tr>
     <tbody id="pages-body"></tbody>
   </table>
-  <div id="loading" class="loading">Carregant pàgines i posts…</div>
+  <div id="loading" class="loading">Loading pages and posts…</div>
 </div>
 
 <div class="modal-backdrop" id="review-modal">
   <div class="modal">
-    <h2>Revisió — origen vs traducció</h2>
+    <h2>Review — source vs. translation</h2>
     <div id="review-body"></div>
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeReview()">Tancar</button>
-      <button class="btn-good" id="publish-btn" onclick="publishCurrent()">Publicar a WordPress</button>
+      <button class="btn-secondary" onclick="closeReview()">Close</button>
+      <button class="btn-good" id="publish-btn" onclick="publishCurrent()">Publish to WordPress</button>
     </div>
   </div>
 </div>
@@ -165,8 +165,8 @@
 const DASHBOARD_TOKEN = "__DASHBOARD_TOKEN__";
 
 const STATUS_LABEL = {
-  not_translated: "Sense traduir", up_to_date: "Al dia", needs_update: "Necessita actualitzar",
-  unknown: "Estat desconegut", running: "Traduint…", error: "Error",
+  not_translated: "Not translated", up_to_date: "Up to date", needs_update: "Needs update",
+  unknown: "Unknown status", running: "Translating…", error: "Error",
 };
 let currentReviewJobId = null;
 const pollers = {};
@@ -178,14 +178,14 @@ async function loadPages() {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
     document.getElementById("loading").innerHTML =
-      `<span style="color:var(--bad)">Error carregant les pàgines: ${escapeHtml(err.detail || "desconegut")}</span>`;
+      `<span style="color:var(--bad)">Error loading pages: ${escapeHtml(err.detail || "unknown")}</span>`;
     return;
   }
   const items = await res.json();
   const body = document.getElementById("pages-body");
   body.innerHTML = "";
   for (const item of items) body.appendChild(renderRow(item));
-  document.getElementById("summary").textContent = `${items.length} elements`;
+  document.getElementById("summary").textContent = `${items.length} items`;
   document.getElementById("loading").style.display = "none";
   document.getElementById("pages-table").style.display = "table";
 }
@@ -226,11 +226,11 @@ function renderActions(item) {
   const div = document.createElement("div");
   div.className = "actions";
   if (item.status === "not_translated") {
-    div.appendChild(makeButton("Traduir", "btn-primary", () => startJob(item, "translate")));
+    div.appendChild(makeButton("Translate", "btn-primary", () => startJob(item, "translate")));
   } else if (item.status === "needs_update" || item.status === "unknown") {
-    div.appendChild(makeButton("Actualitzar", "btn-primary", () => startJob(item, "sync")));
+    div.appendChild(makeButton("Update", "btn-primary", () => startJob(item, "sync")));
   } else if (item.status === "up_to_date") {
-    div.appendChild(makeButton("Forçar retraducció", "btn-secondary", () => startJob(item, "sync")));
+    div.appendChild(makeButton("Force re-translation", "btn-secondary", () => startJob(item, "sync")));
   }
   return div;
 }
@@ -260,7 +260,7 @@ function setRowRunning(item, jobId) {
   statusCell.appendChild(pill("running"));
   const link = document.createElement("a");
   link.className = "link"; link.href = `/progress/${jobId}`; link.target = "_blank";
-  link.textContent = " veure progrés en directe";
+  link.textContent = " view live progress";
   statusCell.appendChild(link);
   const actionsCell = row.querySelector(".actions-cell");
   actionsCell.innerHTML = "";
@@ -289,16 +289,16 @@ function onJobSettled(item, jobId, job) {
     const msg = document.createElement("span");
     msg.className = "type-tag"; msg.style.color = "var(--bad)"; msg.textContent = " " + job.error;
     statusCell.appendChild(msg);
-    actionsCell.appendChild(makeButton("Reintentar", "btn-secondary", () => startJob(item, item.status === "not_translated" ? "translate" : "sync")));
+    actionsCell.appendChild(makeButton("Retry", "btn-secondary", () => startJob(item, item.status === "not_translated" ? "translate" : "sync")));
     return;
   }
 
   if (job.status === "awaiting_review") {
     statusCell.appendChild(pill("needs_update"));
     const label = document.createElement("span");
-    label.className = "type-tag"; label.textContent = ` Traduït (${job.overall_decision}), pendent de revisió`;
+    label.className = "type-tag"; label.textContent = ` Translated (${job.overall_decision}), pending review`;
     statusCell.appendChild(label);
-    actionsCell.appendChild(makeButton("Revisar i publicar", "btn-primary", () => openReview(jobId)));
+    actionsCell.appendChild(makeButton("Review & publish", "btn-primary", () => openReview(jobId)));
     return;
   }
 
@@ -338,11 +338,11 @@ function closeReview() {
 async function publishCurrent() {
   if (!currentReviewJobId) return;
   const btn = document.getElementById("publish-btn");
-  btn.disabled = true; btn.textContent = "Publicant…";
+  btn.disabled = true; btn.textContent = "Publishing…";
   await fetch(`/api/jobs/${currentReviewJobId}/publish`, {
     method: "POST", headers: { "X-Dashboard-Token": DASHBOARD_TOKEN },
   });
-  btn.disabled = false; btn.textContent = "Publicar a WordPress";
+  btn.disabled = false; btn.textContent = "Publish to WordPress";
   closeReview();
   loadPages();
 }
@@ -358,8 +358,8 @@ async function loadConfig() {
   const banner = document.getElementById("autonomous-banner");
   if (config.auto_publish_mode === "off") return;
   const text = config.auto_publish_mode === "all"
-    ? "Mode autònom ACTIU (AUTO_PUBLISH_MODE=all): totes les traduccions es publiquen soles, sense revisió humana, ignorant fins i tot les banderes de QA."
-    : "Mode autònom ACTIU (AUTO_PUBLISH_MODE=qa_gated): les traduccions marcades auto_approve es publiquen soles; la resta continua com a esborrany.";
+    ? "Autonomous mode ACTIVE (AUTO_PUBLISH_MODE=all): every translation publishes itself, with no human review, ignoring QA flags entirely."
+    : "Autonomous mode ACTIVE (AUTO_PUBLISH_MODE=qa_gated): translations marked auto_approve publish themselves; everything else still drafts.";
   document.getElementById("autonomous-banner-text").textContent = text;
   banner.classList.add("show");
 }
