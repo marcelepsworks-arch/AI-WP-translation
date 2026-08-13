@@ -32,6 +32,26 @@
   .btn-good{ background:var(--good); color:#fff; }
   .toolbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
 
+  .security-panel{
+    background:#fff; border:1px solid var(--line); border-radius:12px; margin-bottom:18px;
+    box-shadow:0 1px 3px rgba(0,0,0,.04);
+  }
+  .security-panel summary{
+    cursor:pointer; padding:12px 16px; font-weight:600; font-size:12.5px; color:var(--accent);
+    list-style:none; display:flex; align-items:center; gap:8px;
+  }
+  .security-panel summary::before{ content:"🛡"; font-size:13px; }
+  .security-panel summary::-webkit-details-marker{ display:none; }
+  .security-panel[open] summary{ border-bottom:1px solid var(--line); }
+  .security-body{ padding:4px 16px 14px 16px; }
+  .security-body p{ margin:0 0 10px 0; font-size:12.5px; color:#3a3a3c; }
+  .security-body p b{ color:var(--ink); }
+  .security-body code{
+    font-family:"SF Mono",Consolas,"Courier New",monospace; font-size:11px; background:var(--bg-card);
+    padding:1.5px 5px; border-radius:4px;
+  }
+  .security-footer{ font-size:11.5px !important; color:var(--ink-soft) !important; margin-top:12px !important; padding-top:10px; border-top:1px solid var(--line); }
+
   table{ width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.04); }
   th{
     text-align:left; font-size:10.5px; letter-spacing:.4px; text-transform:uppercase; color:var(--ink-soft);
@@ -79,6 +99,26 @@
   <div class="eyebrow">GNSS AI Translation Engine</div>
   <h1>Translation Dashboard</h1>
   <div class="subtitle">precision-gnss.com &middot; English &rarr; Spanish</div>
+
+  <details class="security-panel">
+    <summary>Seguretat i fiabilitat — què cal saber abans de fer clic</summary>
+    <div class="security-body">
+      <p><b>Pot al·lucinar la IA?</b> Sí, és un risc real de qualsevol traductor amb LLM — no ho amaguem. Per això
+      cada traducció passa per un Traductor <i>i</i> un Revisor independents (dues crides separades), més tres
+      verificacions mecàniques (nombres/unitats, terminologia protegida, URLs). Cap traducció es publica mai
+      automàticament: el pitjor cas és un esborrany erroni pendent de revisió, mai contingut erroni en directe.</p>
+      <p><b>Pot fer un SQL injection o similar?</b> Pràcticament no, per arquitectura: aquest motor no té cap
+      connexió a base de dades, només parla amb WordPress via la seva API REST autenticada — el mateix camí que
+      faria servir un editor humà.</p>
+      <p><b>I si la IA generés HTML perillós (<code>&lt;script&gt;</code>)?</b> Es filtra amb una llista blanca
+      d'etiquetes abans que arribi enlloc — <code>app/qa/html_sanitizer.py</code>.</p>
+      <p><b>Aquest panell mateix:</b> només escolta a <code>127.0.0.1</code> (mai accessible des de fora del teu
+      ordinador) i cada acció requereix un token secret generat a cada arrencada, perquè cap altra pàgina web
+      oberta en una altra pestanya pugui disparar accions aquí sense que tu ho sàpigues.</p>
+      <p class="security-footer">Detall complet i honest (inclosos els límits reals, no només el que funciona bé)
+      al <a class="link" href="https://github.com/marcelepsworks-arch/AI-WP-translation#security--quality-controls" target="_blank">README del projecte</a>.</p>
+    </div>
+  </details>
 
   <div class="toolbar">
     <span id="summary" class="type-tag"></span>

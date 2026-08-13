@@ -1,4 +1,4 @@
-# GNSS AI Translation Engine
+# WP AI Translation Engine
 
 **Automated, technically-accurate English → Spanish translation for [Precision-GNSS.com](https://www.precision-gnss.com), a GNSS/RTK technical knowledge platform.**
 
@@ -13,6 +13,20 @@ Generic machine translation optimizes for text that *reads well*. This project o
 That distinction matters because the content is technical: RTK accuracy figures, correction-service ranges, product specifications, safety notes. A fluent-sounding mistranslation that quietly turns "1 cm accuracy" into "2 cm accuracy," or "within 5 seconds" into "in under 5 seconds," is a worse outcome than an awkward but correct sentence. So the system is built around **independent verification**, not a single AI call trusted to get everything right at once.
 
 This isn't theoretical. During development, the Translator alone mistranslated *"achieves a fix within 5 seconds"* (i.e. in **at most** 5 seconds) as *"en menos de 5 segundos"* (in **strictly less than** 5 seconds) — a real, subtle technical drift. The independent Reviewer step caught it and correctly rejected the translation. A single combined request would very likely have missed it.
+
+---
+
+## ⚠️ AI Reliability & Attack Surface — read this before trusting any of it
+
+Two questions worth answering honestly rather than with a marketing claim of "100% safe":
+
+**Can the Translator hallucinate?** Yes — this is a real, non-zero risk with any LLM, not something this project pretends away. Real examples caught during development (see above, plus a deliberate *"1 cm accuracy"* → *"2 cm"* test case, and a statement turned into a question, altering tone). There's no formally measured "hallucination rate" — that would be false precision — but empirically, 5–10% of blocks get flagged for human review in typical runs (a mix of real issues and QA-checker false positives). What actually limits the damage: the Translator and Reviewer are two **independent** AI calls (the Reviewer has caught every example above), backed by three deterministic checks (numbers/units, protected terminology, URL preservation) — and, most importantly, **nothing is ever auto-published**. The worst case is a wrong draft waiting for a human, never wrong content live.
+
+**Could it cause a SQL injection or similarly serious exploit?** Practically no, by architecture rather than by hope: the Python engine has no database connection at all — every WordPress interaction goes through the authenticated REST API, the same path a human editor's browser uses. The one raw SQL query in the whole system (`gnss-bridge.php`, reading WPML's translation status) uses `$wpdb->prepare()` with parameterized placeholders, not string concatenation. Translated content is never interpolated into a query anywhere.
+
+**Could the AI output malicious HTML (XSS) instead?** This *was* a real, if narrow, gap — a hallucinated `<script>`/`onclick=`/`javascript:` payload could have survived into a WordPress draft undetected. Closed 11 Aug 2026 with an allowlist-based sanitizer (`app/qa/html_sanitizer.py`) applied to every single translation before it's used anywhere — see the table below.
+
+**Is the local dashboard itself safe to run?** Yes, with two protections: it only listens on `127.0.0.1` (never reachable from outside your machine, no network to intercept), and every action that changes state requires a per-process secret token, closing the "localhost CSRF" attack class that has hit tools like Ollama and Docker Desktop (a malicious webpage in another tab silently POSTing to a local server while it's open).
 
 ---
 
@@ -76,7 +90,9 @@ Three concerns are kept deliberately apart: **WordPress never talks to DeepSeek 
 | Faithful Elementor round-trip — only known text fields touched | Layout, image, or structural corruption in `_elementor_data` |
 | `wpml_object_id` (modern filter), not legacy `icl_object_id` | A confirmed false-positive where the legacy filter reported a translation existed when it didn't |
 | WordPress Application Password (not account login password), secrets via `.env` | Credential exposure / committing secrets to source control |
-| 246 automated tests, no live API calls in CI | Regressions shipping unnoticed |
+| Allowlist HTML sanitizer (`app/qa/html_sanitizer.py`) on every translation | A hallucinated `<script>`/`onclick=`/`javascript:` payload reaching a WordPress draft |
+| Per-process CSRF token on the dashboard's mutating endpoints (`app/webui`) | A malicious webpage in another tab silently triggering a translation/publish while the dashboard is open |
+| 261 automated tests, no live API calls in CI | Regressions shipping unnoticed |
 
 ---
 
@@ -150,7 +166,7 @@ Agency/SaaS figures are indicative market ranges for technical translation, show
 | 10 | Scale-out & scheduled sync | ⚪ Not started |
 | — | Review-then-publish flow *(added, outside the original 10 phases)* | 🟢 Complete — local side-by-side review report (`logs/progress.html`) + `app/cli/publish.py` writes the approved draft with no extra DeepSeek cost |
 
-**246 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md) / [`MEMORIA.md`](MEMORIA.md).
+**261 automated tests, all passing.** Full phase-by-phase detail: [`ROADMAP.md`](ROADMAP.md), [`PLA-ACCIO.md`](PLA-ACCIO.md), running session history in [`LOG.md`](LOG.md) / [`MEMORIA.md`](MEMORIA.md).
 
 ---
 
