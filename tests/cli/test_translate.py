@@ -4,6 +4,7 @@ from app.cli.translate import (
     BlockResult,
     overall_decision,
     reassemble_body_html,
+    resolve_publish_status,
     translate_block,
     translate_blocks,
     translate_page,
@@ -179,6 +180,22 @@ def test_overall_decision_is_human_review_when_no_reject_but_some_human_review()
     assert overall_decision(results) == "human_review"
 
 
+def test_resolve_publish_status_off_always_drafts():
+    assert resolve_publish_status("off", "auto_approve") == "draft"
+    assert resolve_publish_status("off", "reject") == "draft"
+
+
+def test_resolve_publish_status_qa_gated_publishes_only_auto_approve():
+    assert resolve_publish_status("qa_gated", "auto_approve") == "publish"
+    assert resolve_publish_status("qa_gated", "human_review") == "draft"
+    assert resolve_publish_status("qa_gated", "reject") == "draft"
+
+
+def test_resolve_publish_status_all_always_publishes():
+    assert resolve_publish_status("all", "auto_approve") == "publish"
+    assert resolve_publish_status("all", "reject") == "publish"
+
+
 def test_reassemble_body_html_wraps_headings_and_paragraphs_with_translations():
     blocks = [
         ContentBlock(content_id="b1", type="heading", context="", source="Title", translate=True),
@@ -332,6 +349,47 @@ def test_translate_page_writes_draft_and_links_translation_when_approved():
         "language_code": "es",
         "source_language_code": "en",
     }
+
+
+def test_translate_page_publishes_live_under_qa_gated_when_auto_approved():
+    wp_client = MagicMock()
+
+    def fake_get(path, params=None):
+        resp = MagicMock()
+        if "translation-status" in path:
+            resp.json.return_value = {"element_id": 42, "trid": 13329, "language_code": "en"}
+        else:
+            resp.json.return_value = _page_payload()
+        return resp
+
+    wp_client.get.side_effect = fake_get
+    wp_client.post.return_value.json.return_value = {"id": 99}
+    deepseek = _deepseek("El rover se mueve.")  # auto_approve
+
+    translate_page(
+        wp_client, deepseek, [], post_id=42, post_type="page", target_language="es",
+        dry_run=False, auto_publish_mode="qa_gated",
+    )
+
+    create_call = wp_client.post.call_args_list[0]
+    assert create_call.kwargs["json"]["status"] == "publish"
+
+
+def test_translate_page_still_drafts_under_qa_gated_when_flagged():
+    wp_client = MagicMock()
+    wp_client.get.return_value.json.return_value = {
+        "id": 42, "title": {"rendered": "1 cm accuracy"}, "excerpt": {"rendered": ""},
+        "content": {"rendered": ""}, "yoast_head_json": None,
+    }
+    wp_client.post.return_value.json.return_value = {"id": 99}
+    deepseek = _deepseek("2 cm de precisión")  # numeric mismatch -> reject
+
+    translate_page(
+        wp_client, deepseek, [], post_id=42, dry_run=False, auto_publish_mode="qa_gated",
+    )
+
+    create_call = wp_client.post.call_args_list[0]
+    assert create_call.kwargs["json"]["status"] == "draft"
 
 
 def test_translate_page_writes_progress_html_when_path_given(tmp_path):

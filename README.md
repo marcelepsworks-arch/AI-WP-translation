@@ -20,13 +20,25 @@ This isn't theoretical. During development, the Translator alone mistranslated *
 
 Two questions worth answering honestly rather than with a marketing claim of "100% safe":
 
-**Can the Translator hallucinate?** Yes — this is a real, non-zero risk with any LLM, not something this project pretends away. Real examples caught during development (see above, plus a deliberate *"1 cm accuracy"* → *"2 cm"* test case, and a statement turned into a question, altering tone). There's no formally measured "hallucination rate" — that would be false precision — but empirically, 5–10% of blocks get flagged for human review in typical runs (a mix of real issues and QA-checker false positives). What actually limits the damage: the Translator and Reviewer are two **independent** AI calls (the Reviewer has caught every example above), backed by three deterministic checks (numbers/units, protected terminology, URL preservation) — and, most importantly, **nothing is ever auto-published**. The worst case is a wrong draft waiting for a human, never wrong content live.
+**Can the Translator hallucinate?** Yes — this is a real, non-zero risk with any LLM, not something this project pretends away. Real examples caught during development (see above, plus a deliberate *"1 cm accuracy"* → *"2 cm"* test case, and a statement turned into a question, altering tone). There's no formally measured "hallucination rate" — that would be false precision — but empirically, 5–10% of blocks get flagged for human review in typical runs (a mix of real issues and QA-checker false positives). What actually limits the damage: the Translator and Reviewer are two **independent** AI calls (the Reviewer has caught every example above), backed by three deterministic checks (numbers/units, protected terminology, URL preservation) — and, by **default, nothing is ever auto-published**. The worst case is a wrong draft waiting for a human, never wrong content live. (There is one explicit, opt-in exception — see "Autonomous publishing" below.)
 
 **Could it cause a SQL injection or similarly serious exploit?** Practically no, by architecture rather than by hope: the Python engine has no database connection at all — every WordPress interaction goes through the authenticated REST API, the same path a human editor's browser uses. The one raw SQL query in the whole system (`gnss-bridge.php`, reading WPML's translation status) uses `$wpdb->prepare()` with parameterized placeholders, not string concatenation. Translated content is never interpolated into a query anywhere.
 
 **Could the AI output malicious HTML (XSS) instead?** This *was* a real, if narrow, gap — a hallucinated `<script>`/`onclick=`/`javascript:` payload could have survived into a WordPress draft undetected. Closed 11 Aug 2026 with an allowlist-based sanitizer (`app/qa/html_sanitizer.py`) applied to every single translation before it's used anywhere — see the table below.
 
 **Is the local dashboard itself safe to run?** Yes, with two protections: it only listens on `127.0.0.1` (never reachable from outside your machine, no network to intercept), and every action that changes state requires a per-process secret token, closing the "localhost CSRF" attack class that has hit tools like Ollama and Docker Desktop (a malicious webpage in another tab silently POSTing to a local server while it's open).
+
+### Autonomous publishing (opt-in, off by default)
+
+`AUTO_PUBLISH_MODE` in `.env` is the **one** deliberate way to weaken the "nothing auto-publishes" guarantee above, and it's off unless an operator explicitly sets it:
+
+| Value | Behavior |
+|---|---|
+| `off` (default, or unset) | Every translation is always a draft, pending human review. Nothing in this project can publish without this variable being changed first. |
+| `qa_gated` | A translation is published immediately **only** if the QA layer itself scored it `auto_approve` — anything flagged `human_review` or `reject` still becomes a draft, exactly as today. Skips the human review *step*, not the QA *gate*. |
+| `all` | Every translation is published immediately, regardless of QA decision — including pages the system itself flagged as suspect. The operator's own choice to accept that risk. |
+
+This is a persistent `.env` setting, not a one-off CLI flag, by request — which means it stays on across every run until changed back. Two things make that safer to live with: the dashboard shows a permanent red banner whenever it's active (never silent), and every log line for a live-published page is written at `WARNING`, not `INFO`, so it stands out in `logs/translate_audit.log`. `qa_gated` is the recommended setting if you use this at all — `all` bypasses the one layer (QA scoring) that has caught every real translation error found during this project's development so far.
 
 ---
 
@@ -83,7 +95,7 @@ Three concerns are kept deliberately apart: **WordPress never talks to DeepSeek 
 
 | Control | What it prevents |
 |---|---|
-| Draft-only writes, hard-coded (not a config toggle) | A misconfiguration accidentally publishing a page live |
+| Draft-only writes by default (`AUTO_PUBLISH_MODE=off`), one explicit opt-in variable to change it | A misconfiguration accidentally publishing a page live — see "Autonomous publishing" above |
 | Human review before publish (`--review` → `app/cli/publish.py`) | Anything reaching the site without a person looking at source vs. translation first |
 | Per-block QA scoring (numbers/units, protected terms, URLs, Reviewer verdict) | Silent numeric drift, dropped warnings, broken links |
 | Protected terminology & content detection | The AI translating product names, model numbers, or glossary-mandated terms |

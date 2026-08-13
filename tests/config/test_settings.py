@@ -48,3 +48,20 @@ def test_load_settings_strips_whitespace_from_target_languages():
     settings = load_settings(env)
 
     assert settings.target_languages == ["es", "fr", "de"]
+
+
+def test_load_settings_defaults_auto_publish_mode_to_off():
+    settings = load_settings({"DEEPSEEK_API_KEY": "k"})
+
+    assert settings.auto_publish_mode == "off"
+
+
+def test_load_settings_reads_auto_publish_mode():
+    settings = load_settings({"DEEPSEEK_API_KEY": "k", "AUTO_PUBLISH_MODE": "qa_gated"})
+
+    assert settings.auto_publish_mode == "qa_gated"
+
+
+def test_load_settings_rejects_invalid_auto_publish_mode():
+    with pytest.raises(ValueError, match="AUTO_PUBLISH_MODE"):
+        load_settings({"DEEPSEEK_API_KEY": "k", "AUTO_PUBLISH_MODE": "yolo"})

@@ -87,6 +87,7 @@ def update_page(
     target_language: str = "es",
     max_workers: int = 1,
     progress_html_path: Path | None = None,
+    auto_publish_mode: str = "off",
 ) -> SyncResult:
     """Re-translates only the blocks whose source text changed since the
     last translation, and updates the existing translated post in place.
@@ -146,11 +147,22 @@ def update_page(
     results_by_id = {r.content_id: r for r in results}
     decision = overall_decision(new_results) if new_results else "auto_approve"
 
-    payload = build_translation_payload(page, post_id, post_type, blocks, all_blocks, elementor_doc, results, results_by_id)
+    payload = build_translation_payload(
+        page, post_id, post_type, blocks, all_blocks, elementor_doc, results, results_by_id,
+        auto_publish_mode=auto_publish_mode,
+    )
+    if payload["status"] == "publish":
+        logger.warning(
+            "AUTO_PUBLISH_MODE=%s: %s %d update will be published LIVE, no human review (decision=%s)",
+            auto_publish_mode, post_type, post_id, decision,
+        )
 
     endpoint = f"/wp-json/wp/v2/{'pages' if post_type == 'page' else 'posts'}/{translated_post_id}"
     wp_client.post(endpoint, json=payload)
-    logger.info("updated draft %s %d (%s translation of %s %d)", post_type, translated_post_id, target_language, post_type, post_id)
+    logger.info(
+        "updated %s %d as %s (%s translation of %s %d)",
+        post_type, translated_post_id, payload["status"], target_language, post_type, post_id,
+    )
 
     if progress is not None:
         progress.finish(decision)
@@ -176,6 +188,7 @@ def sync_page(
     target_language: str = "es",
     max_workers: int = 1,
     progress_html_path: Path | None = None,
+    auto_publish_mode: str = "off",
 ) -> SyncResult:
     status = wp_wpml.get_translation_status(wp_client, post_id, target_language)
 
@@ -184,6 +197,7 @@ def sync_page(
         result = translate_page(
             wp_client, deepseek, glossary_entries, post_id, post_type, target_language,
             dry_run=False, max_workers=max_workers, progress_html_path=progress_html_path,
+            auto_publish_mode=auto_publish_mode,
         )
         return SyncResult(
             post_id=post_id, post_type=post_type, target_language=target_language, outcome="created",
@@ -209,7 +223,7 @@ def sync_page(
     # nothing beyond the extraction/diff itself.
     return update_page(
         wp_client, deepseek, glossary_entries, post_id, translated_post_id, post_type, target_language,
-        max_workers=max_workers, progress_html_path=progress_html_path,
+        max_workers=max_workers, progress_html_path=progress_html_path, auto_publish_mode=auto_publish_mode,
     )
 
 
@@ -245,6 +259,7 @@ def main() -> None:
     result = sync_page(
         wp_client, deepseek, glossary_entries, args.post_id, args.post_type, args.language,
         max_workers=args.workers, progress_html_path=progress_html_path,
+        auto_publish_mode=settings.auto_publish_mode,
     )
 
     print(f"Post {result.post_id} ({result.post_type}) -> {result.target_language}: {result.outcome}")

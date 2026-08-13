@@ -2,21 +2,25 @@
 Extract -> Glossary -> DeepSeek (Translator + Reviewer) -> QA -> Score ->
 WordPress write -> WPML link. Operates on one page/post at a time.
 
-AUTO_PUBLISH is intentionally not a runtime toggle: every translation this
-orchestrator writes is always created as a `draft`. That is a hard product
-guarantee repeated throughout the project docs (MEMORIA.md, ROADMAP.md
-FASE 8.3), not something that should be one flipped env var away from being
-violated.
+Every translation this orchestrator writes defaults to `draft` -- that is
+the hard product guarantee repeated throughout the project docs (MEMORIA.md,
+ROADMAP.md FASE 8.3, README "AI Reliability & Attack Surface"). The one
+deliberate exception is `AUTO_PUBLISH_MODE` (`.env`, off by default,
+resolved to a WP status by `resolve_publish_status()`): an explicit,
+persistent opt-in an operator sets themselves, never a CLI flag someone
+could pass once by habit -- see the README section above before touching
+it. Per-page QA still applies underneath it: "qa_gated" only ever publishes
+pages the QA layer itself scored `auto_approve`.
 
-Per-block QA does NOT gate whether the page gets written (changed
+Per-block QA does NOT otherwise gate whether the page gets written (changed
 2026-08-06, MEMORIA.md): on a long page, some block being flagged is close
 to certain — either a genuine issue (the Reviewer catching added/altered
 meaning) or a mechanical-checker false positive, and blocking the entire
-draft on any single flagged block meant real pages almost never got
-written. The page is always written as a draft (never published either
-way), and any non-auto_approve block is logged as needing human review
-before publishing — see `PageTranslationResult.blocks` / `.overall_decision`
-and the WARNING lines in logs/translate_audit.log.
+write on any single flagged block meant real pages almost never got
+written. Any non-auto_approve block is logged as needing human review
+before publishing regardless of `AUTO_PUBLISH_MODE` — see
+`PageTranslationResult.blocks` / `.overall_decision` and the WARNING lines
+in logs/translate_audit.log.
 
 Known limitation, documented rather than hidden: the translated body HTML is
 reconstructed from the extracted ContentBlocks (heading/paragraph/list_item
@@ -239,6 +243,23 @@ def overall_decision(results: list[BlockResult]) -> str:
     return "auto_approve"
 
 
+def resolve_publish_status(auto_publish_mode: str, decision: str) -> str:
+    """The project's default (`auto_publish_mode="off"`) always returns
+    "draft" -- see the module docstring and README "AI Reliability &
+    Attack Surface" for why that's a hard guarantee, not a config default
+    someone could accidentally weaken. `AUTO_PUBLISH_MODE` in `.env` is the
+    one explicit, deliberate opt-out: "qa_gated" only skips human review
+    when the QA layer itself found nothing to flag; "all" publishes
+    unconditionally, ignoring QA -- the operator's own choice to accept
+    that risk, not this function's.
+    """
+    if auto_publish_mode == "all":
+        return "publish"
+    if auto_publish_mode == "qa_gated" and decision == "auto_approve":
+        return "publish"
+    return "draft"
+
+
 def reassemble_body_html(blocks: list[ContentBlock], results_by_id: dict[str, BlockResult]) -> str:
     parts: list[str] = []
     for block in blocks:
@@ -323,6 +344,7 @@ def build_translation_payload(
     elementor_doc,
     results: list[BlockResult],
     results_by_id: dict[str, BlockResult],
+    auto_publish_mode: str = "off",
 ) -> dict:
     """Builds the exact WordPress REST payload (title/content/meta/status)
     for a translated page, given the already-translated block results.
@@ -352,10 +374,11 @@ def build_translation_payload(
     # actually changed, and skip re-translating (and re-paying for) the rest.
     meta["_gnss_block_hashes"] = json.dumps(build_block_hashes(all_blocks, results_by_id))
 
+    status = resolve_publish_status(auto_publish_mode, overall_decision(results))
     payload: dict = {
         "title": title_result.translation if title_result else page["title"]["rendered"],
         "content": reassemble_body_html(blocks, results_by_id),
-        "status": "draft",  # never anything else -- see module docstring
+        "status": status,
         "meta": meta,
     }
     if excerpt_result:
@@ -374,6 +397,7 @@ def translate_page(
     max_workers: int = 1,
     progress_html_path: Path | None = None,
     review_json_path: Path | None = None,
+    auto_publish_mode: str = "off",
 ) -> PageTranslationResult:
     logger.info("fetching %s %d for translation to %s", post_type, post_id, target_language)
     get_fn = wp_content.get_page if post_type == "page" else wp_content.get_post
@@ -416,10 +440,16 @@ def translate_page(
     # needs the exact WP-write payload to save for later publishing --
     # building it costs nothing extra, it just doesn't get sent anywhere yet.
     payload = build_translation_payload(
-        page, post_id, post_type, blocks, all_blocks, elementor_doc, results, results_by_id
+        page, post_id, post_type, blocks, all_blocks, elementor_doc, results, results_by_id,
+        auto_publish_mode=auto_publish_mode,
     )
 
     endpoint = f"/wp-json/wp/v2/{'pages' if post_type == 'page' else 'posts'}"
+    if payload["status"] == "publish":
+        logger.warning(
+            "AUTO_PUBLISH_MODE=%s: %s %d will be published LIVE, no human review (decision=%s)",
+            auto_publish_mode, post_type, post_id, decision,
+        )
 
     publish_command = None
     if review_json_path is not None:
@@ -549,6 +579,7 @@ def main() -> None:
         max_workers=args.workers,
         progress_html_path=progress_html_path,
         review_json_path=review_json_path,
+        auto_publish_mode=settings.auto_publish_mode,
     )
 
     print(f"Post {result.post_id} ({result.post_type}) -> {result.target_language}")
@@ -557,7 +588,9 @@ def main() -> None:
         qa_note = f" [{block.qa.decision}, score={block.qa.score}]" if block.qa else " [skipped]"
         print(f"  {block.content_id} ({block.type}){qa_note}")
     if result.written:
-        print(f"Written as draft: post id {result.translated_post_id}")
+        published = resolve_publish_status(settings.auto_publish_mode, result.overall_decision) == "publish"
+        verb = "Published live" if published else "Written as draft"
+        print(f"{verb}: post id {result.translated_post_id}")
     else:
         print("Nothing written (dry-run or rejected by QA).")
     if deepseek.usage:

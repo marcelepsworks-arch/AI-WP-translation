@@ -107,6 +107,11 @@ def index() -> str:
     return html.replace("__DASHBOARD_TOKEN__", _DASHBOARD_TOKEN)
 
 
+@app.get("/api/config")
+def get_config() -> dict:
+    return {"auto_publish_mode": load_settings().auto_publish_mode}
+
+
 def _status_for(client: WordPressClient, item: dict, post_type: str) -> dict:
     status = wp_wpml.get_translation_status(client, item["id"], _TARGET_LANGUAGE)
     if not status.get("translation_exists"):
@@ -147,10 +152,30 @@ class JobRequest(BaseModel):
 def _run_translate_job(job_id: str, post_id: int, post_type: str) -> None:
     wp_client = _build_wp_client()
     deepseek = _build_deepseek_client()
+    settings = load_settings()
     glossary_entries = load_glossary_files(_GLOSSARY_FILES)
-    review_path = _LOGS_DIR / f"review_{job_id}.json"
     progress_path = _LOGS_DIR / f"progress_{job_id}.html"
+    autonomous = settings.auto_publish_mode != "off"
     try:
+        if autonomous:
+            # AUTO_PUBLISH_MODE is set: the operator has already decided,
+            # in .env, that new translations from this dashboard don't wait
+            # for a human -- same behaviour as running the CLI without
+            # --review. build_translation_payload still decides draft vs.
+            # publish per auto_publish_mode + QA decision (see resolve_publish_status).
+            result = translate_page(
+                wp_client, deepseek, glossary_entries, post_id, post_type, _TARGET_LANGUAGE,
+                dry_run=False, max_workers=5, progress_html_path=progress_path,
+                auto_publish_mode=settings.auto_publish_mode,
+            )
+            with _jobs_lock:
+                _jobs[job_id].update(
+                    status="done", outcome="created", overall_decision=result.overall_decision,
+                    translated_post_id=result.translated_post_id,
+                )
+            return
+
+        review_path = _LOGS_DIR / f"review_{job_id}.json"
         result = translate_page(
             wp_client, deepseek, glossary_entries, post_id, post_type, _TARGET_LANGUAGE,
             dry_run=True, max_workers=5, progress_html_path=progress_path, review_json_path=review_path,
@@ -169,12 +194,13 @@ def _run_translate_job(job_id: str, post_id: int, post_type: str) -> None:
 def _run_sync_job(job_id: str, post_id: int, post_type: str) -> None:
     wp_client = _build_wp_client()
     deepseek = _build_deepseek_client()
+    settings = load_settings()
     glossary_entries = load_glossary_files(_GLOSSARY_FILES)
     progress_path = _LOGS_DIR / f"progress_{job_id}.html"
     try:
         result = sync_page(
             wp_client, deepseek, glossary_entries, post_id, post_type, _TARGET_LANGUAGE,
-            max_workers=5, progress_html_path=progress_path,
+            max_workers=5, progress_html_path=progress_path, auto_publish_mode=settings.auto_publish_mode,
         )
         with _jobs_lock:
             _jobs[job_id].update(

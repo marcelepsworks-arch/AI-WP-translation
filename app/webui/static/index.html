@@ -92,6 +92,13 @@
   .review-row .cols{ display:grid; grid-template-columns:1fr 1fr; gap:14px; font-size:12.5px; }
   .review-row .src{ color:var(--ink-soft); }
   .modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+
+  .autonomous-banner{
+    display:none; align-items:center; gap:10px; background:var(--bad-soft); color:var(--bad);
+    border-radius:12px; padding:11px 16px; margin-bottom:16px; font-size:12.5px; font-weight:600;
+  }
+  .autonomous-banner.show{ display:flex; }
+  .autonomous-banner .dot{ width:7px; height:7px; border-radius:50%; background:var(--bad); animation:pulse 1.4s ease-in-out infinite; }
 </style>
 </head>
 <body>
@@ -100,13 +107,21 @@
   <h1>Translation Dashboard</h1>
   <div class="subtitle">precision-gnss.com &middot; English &rarr; Spanish</div>
 
+  <div class="autonomous-banner" id="autonomous-banner">
+    <span class="dot"></span>
+    <span id="autonomous-banner-text"></span>
+  </div>
+
   <details class="security-panel">
     <summary>Seguretat i fiabilitat — què cal saber abans de fer clic</summary>
     <div class="security-body">
       <p><b>Pot al·lucinar la IA?</b> Sí, és un risc real de qualsevol traductor amb LLM — no ho amaguem. Per això
       cada traducció passa per un Traductor <i>i</i> un Revisor independents (dues crides separades), més tres
-      verificacions mecàniques (nombres/unitats, terminologia protegida, URLs). Cap traducció es publica mai
-      automàticament: el pitjor cas és un esborrany erroni pendent de revisió, mai contingut erroni en directe.</p>
+      verificacions mecàniques (nombres/unitats, terminologia protegida, URLs).</p>
+      <p><b>Es publica sol, sense revisió humana?</b> Per defecte, mai — tota traducció queda com a esborrany
+      pendent de revisió. Existeix un mode autònom opcional (<code>AUTO_PUBLISH_MODE</code> a <code>.env</code>),
+      desactivat de fàbrica, que l'operador ha d'activar explícitament — quan ho està, ho veuràs sempre com un
+      avís vermell a dalt de tot d'aquesta pàgina, mai en silenci.</p>
       <p><b>Pot fer un SQL injection o similar?</b> Pràcticament no, per arquitectura: aquest motor no té cap
       connexió a base de dades, només parla amb WordPress via la seva API REST autenticada — el mateix camí que
       faria servir un editor humà.</p>
@@ -338,6 +353,18 @@ function escapeHtml(s) {
   return div.innerHTML;
 }
 
+async function loadConfig() {
+  const config = await (await fetch("/api/config")).json();
+  const banner = document.getElementById("autonomous-banner");
+  if (config.auto_publish_mode === "off") return;
+  const text = config.auto_publish_mode === "all"
+    ? "Mode autònom ACTIU (AUTO_PUBLISH_MODE=all): totes les traduccions es publiquen soles, sense revisió humana, ignorant fins i tot les banderes de QA."
+    : "Mode autònom ACTIU (AUTO_PUBLISH_MODE=qa_gated): les traduccions marcades auto_approve es publiquen soles; la resta continua com a esborrany.";
+  document.getElementById("autonomous-banner-text").textContent = text;
+  banner.classList.add("show");
+}
+
+loadConfig();
 loadPages();
 </script>
 </body>
