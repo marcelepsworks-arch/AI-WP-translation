@@ -30,15 +30,17 @@ Two questions worth answering honestly rather than with a marketing claim of "10
 
 ### Autonomous publishing (opt-in, off by default)
 
-`AUTO_PUBLISH_MODE` in `.env` is the **one** deliberate way to weaken the "nothing auto-publishes" guarantee above, and it's off unless an operator explicitly sets it:
+`AUTO_PUBLISH_MODE` in `.env` is the deliberate, global way to weaken the "nothing auto-publishes" guarantee above, and it's off unless an operator explicitly sets it:
 
 | Value | Behavior |
 |---|---|
-| `off` (default, or unset) | Every translation is always a draft, pending human review. Nothing in this project can publish without this variable being changed first. |
+| `off` (default, or unset) | Every translation is always a draft, pending human review, unless overridden per page (see below). |
 | `qa_gated` | A translation is published immediately **only** if the QA layer itself scored it `auto_approve` — anything flagged `human_review` or `reject` still becomes a draft, exactly as today. Skips the human review *step*, not the QA *gate*. |
 | `all` | Every translation is published immediately, regardless of QA decision — including pages the system itself flagged as suspect. The operator's own choice to accept that risk. |
 
 This is a persistent `.env` setting, not a one-off CLI flag, by request — which means it stays on across every run until changed back. Two things make that safer to live with: the dashboard shows a permanent red banner whenever it's active (never silent), and every log line for a live-published page is written at `WARNING`, not `INFO`, so it stands out in `logs/translate_audit.log`. `qa_gated` is the recommended setting if you use this at all — `all` bypasses the one layer (QA scoring) that has caught every real translation error found during this project's development so far.
+
+**Per-page override:** the dashboard also has a "Publish directly" checkbox next to each page's Translate/Update button — a one-off choice for that single page, independent of `AUTO_PUBLISH_MODE` and without touching `.env`. It behaves like `all` (skips review, ignores QA) but scoped to that one job only; the persistent setting is untouched either way.
 
 ---
 

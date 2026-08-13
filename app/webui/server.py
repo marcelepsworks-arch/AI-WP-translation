@@ -147,26 +147,35 @@ class JobRequest(BaseModel):
     post_id: int
     post_type: str = "page"
     action: str  # "translate" | "sync"
+    # One-off override for this single job, independent of the persistent
+    # AUTO_PUBLISH_MODE setting in .env: skips the review gate and publishes
+    # this one page immediately, ignoring its own QA decision. A deliberate
+    # per-page choice made by clicking the checkbox next to the button, never
+    # a default -- see the frontend's "Publish directly" checkbox.
+    publish_directly: bool = False
 
 
-def _run_translate_job(job_id: str, post_id: int, post_type: str) -> None:
+def _run_translate_job(job_id: str, post_id: int, post_type: str, publish_directly: bool = False) -> None:
     wp_client = _build_wp_client()
     deepseek = _build_deepseek_client()
     settings = load_settings()
     glossary_entries = load_glossary_files(_GLOSSARY_FILES)
     progress_path = _LOGS_DIR / f"progress_{job_id}.html"
-    autonomous = settings.auto_publish_mode != "off"
+    # Either the operator's persistent .env choice, or this one job's
+    # explicit one-off override -- whichever asks for the more permissive
+    # behaviour wins for *this* job only; the .env setting itself never changes.
+    effective_mode = "all" if publish_directly else settings.auto_publish_mode
+    autonomous = effective_mode != "off"
     try:
         if autonomous:
-            # AUTO_PUBLISH_MODE is set: the operator has already decided,
-            # in .env, that new translations from this dashboard don't wait
-            # for a human -- same behaviour as running the CLI without
-            # --review. build_translation_payload still decides draft vs.
-            # publish per auto_publish_mode + QA decision (see resolve_publish_status).
+            # Publishing without review was requested -- either globally via
+            # AUTO_PUBLISH_MODE, or for this one page via "Publish directly".
+            # build_translation_payload still decides draft vs. publish per
+            # effective_mode + QA decision (see resolve_publish_status).
             result = translate_page(
                 wp_client, deepseek, glossary_entries, post_id, post_type, _TARGET_LANGUAGE,
                 dry_run=False, max_workers=5, progress_html_path=progress_path,
-                auto_publish_mode=settings.auto_publish_mode,
+                auto_publish_mode=effective_mode,
             )
             with _jobs_lock:
                 _jobs[job_id].update(
@@ -191,16 +200,17 @@ def _run_translate_job(job_id: str, post_id: int, post_type: str) -> None:
             _jobs[job_id].update(status="error", error=str(exc))
 
 
-def _run_sync_job(job_id: str, post_id: int, post_type: str) -> None:
+def _run_sync_job(job_id: str, post_id: int, post_type: str, publish_directly: bool = False) -> None:
     wp_client = _build_wp_client()
     deepseek = _build_deepseek_client()
     settings = load_settings()
     glossary_entries = load_glossary_files(_GLOSSARY_FILES)
     progress_path = _LOGS_DIR / f"progress_{job_id}.html"
+    effective_mode = "all" if publish_directly else settings.auto_publish_mode
     try:
         result = sync_page(
             wp_client, deepseek, glossary_entries, post_id, post_type, _TARGET_LANGUAGE,
-            max_workers=5, progress_html_path=progress_path, auto_publish_mode=settings.auto_publish_mode,
+            max_workers=5, progress_html_path=progress_path, auto_publish_mode=effective_mode,
         )
         with _jobs_lock:
             _jobs[job_id].update(
@@ -220,10 +230,15 @@ def create_job(req: JobRequest) -> dict:
 
     job_id = uuid.uuid4().hex[:12]
     with _jobs_lock:
-        _jobs[job_id] = {"status": "running", "post_id": req.post_id, "post_type": req.post_type, "action": req.action}
+        _jobs[job_id] = {
+            "status": "running", "post_id": req.post_id, "post_type": req.post_type, "action": req.action,
+            "publish_directly": req.publish_directly,
+        }
 
     target = _run_translate_job if req.action == "translate" else _run_sync_job
-    threading.Thread(target=target, args=(job_id, req.post_id, req.post_type), daemon=True).start()
+    threading.Thread(
+        target=target, args=(job_id, req.post_id, req.post_type, req.publish_directly), daemon=True
+    ).start()
     return {"job_id": job_id}
 
 

@@ -75,6 +75,11 @@
   @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
 
   .actions{ display:flex; gap:8px; align-items:center; }
+  .publish-directly-toggle{
+    display:flex; align-items:center; gap:5px; font-size:11px; color:var(--warn); cursor:pointer;
+    white-space:nowrap; user-select:none;
+  }
+  .publish-directly-toggle input{ cursor:pointer; accent-color:var(--warn); }
   .type-tag{ font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.3px; }
   .loading{ color:var(--ink-soft); padding:24px; text-align:center; }
   a.link{ color:var(--accent); text-decoration:none; font-size:12px; }
@@ -121,7 +126,9 @@
       <p><b>Does it publish itself, without human review?</b> By default, never — every translation is written as
       a draft pending review. There is an optional autonomous mode (<code>AUTO_PUBLISH_MODE</code> in
       <code>.env</code>), off by default, that an operator must enable explicitly — whenever it's on, you'll
-      always see a red banner at the top of this page, never silently.</p>
+      always see a red banner at the top of this page, never silently. There's also a per-page "Publish directly"
+      checkbox next to each Translate/Update button, for a one-off page without changing that global setting —
+      it skips review for that page only, and ignores its own QA decision.</p>
       <p><b>Could it cause a SQL injection or similar?</b> Practically no, by architecture: this engine has no
       database connection at all — it only talks to WordPress through its authenticated REST API, the same path
       a human editor would use.</p>
@@ -225,12 +232,21 @@ function renderRow(item) {
 function renderActions(item) {
   const div = document.createElement("div");
   div.className = "actions";
+  const checkboxId = `publish-directly-${item.post_type}-${item.id}`;
+  const toggle = document.createElement("label");
+  toggle.className = "publish-directly-toggle";
+  toggle.title = "Skip human review and publish this page live as soon as it's translated, ignoring its own QA decision -- a one-off choice for this page only, independent of AUTO_PUBLISH_MODE.";
+  toggle.innerHTML = `<input type="checkbox" id="${checkboxId}"> Publish directly`;
+
   if (item.status === "not_translated") {
-    div.appendChild(makeButton("Translate", "btn-primary", () => startJob(item, "translate")));
+    div.appendChild(makeButton("Translate", "btn-primary", () => startJob(item, "translate", checkboxId)));
+    div.appendChild(toggle);
   } else if (item.status === "needs_update" || item.status === "unknown") {
-    div.appendChild(makeButton("Update", "btn-primary", () => startJob(item, "sync")));
+    div.appendChild(makeButton("Update", "btn-primary", () => startJob(item, "sync", checkboxId)));
+    div.appendChild(toggle);
   } else if (item.status === "up_to_date") {
-    div.appendChild(makeButton("Force re-translation", "btn-secondary", () => startJob(item, "sync")));
+    div.appendChild(makeButton("Force re-translation", "btn-secondary", () => startJob(item, "sync", checkboxId)));
+    div.appendChild(toggle);
   }
   return div;
 }
@@ -243,10 +259,11 @@ function makeButton(label, cls, onClick) {
   return btn;
 }
 
-async function startJob(item, action) {
+async function startJob(item, action, checkboxId) {
+  const publishDirectly = checkboxId ? !!document.getElementById(checkboxId)?.checked : false;
   const res = await fetch("/api/jobs", {
     method: "POST", headers: { "Content-Type": "application/json", "X-Dashboard-Token": DASHBOARD_TOKEN },
-    body: JSON.stringify({ post_id: item.id, post_type: item.post_type, action }),
+    body: JSON.stringify({ post_id: item.id, post_type: item.post_type, action, publish_directly: publishDirectly }),
   });
   const { job_id } = await res.json();
   setRowRunning(item, job_id);
