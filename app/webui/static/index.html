@@ -104,6 +104,11 @@
 </div>
 
 <script>
+// Injected server-side (app/webui/server.py) at page-load time -- never sent
+// to any other origin, and required as a header on every action that
+// changes state. See the comment on _DASHBOARD_TOKEN in server.py.
+const DASHBOARD_TOKEN = "__DASHBOARD_TOKEN__";
+
 const STATUS_LABEL = {
   not_translated: "Sense traduir", up_to_date: "Al dia", needs_update: "Necessita actualitzar",
   unknown: "Estat desconegut", running: "Traduint…", error: "Error",
@@ -185,7 +190,7 @@ function makeButton(label, cls, onClick) {
 
 async function startJob(item, action) {
   const res = await fetch("/api/jobs", {
-    method: "POST", headers: { "Content-Type": "application/json" },
+    method: "POST", headers: { "Content-Type": "application/json", "X-Dashboard-Token": DASHBOARD_TOKEN },
     body: JSON.stringify({ post_id: item.id, post_type: item.post_type, action }),
   });
   const { job_id } = await res.json();
@@ -279,7 +284,9 @@ async function publishCurrent() {
   if (!currentReviewJobId) return;
   const btn = document.getElementById("publish-btn");
   btn.disabled = true; btn.textContent = "Publicant…";
-  await fetch(`/api/jobs/${currentReviewJobId}/publish`, { method: "POST" });
+  await fetch(`/api/jobs/${currentReviewJobId}/publish`, {
+    method: "POST", headers: { "X-Dashboard-Token": DASHBOARD_TOKEN },
+  });
   btn.disabled = false; btn.textContent = "Publicar a WordPress";
   closeReview();
   loadPages();

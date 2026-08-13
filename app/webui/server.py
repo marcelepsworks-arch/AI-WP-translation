@@ -19,7 +19,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -42,6 +42,23 @@ _TARGET_LANGUAGE = "es"
 
 _jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
+
+# Random per-process secret, embedded server-side into the page it serves at
+# `/` (never sent to any other origin) and required as a header on every
+# state-changing request. Without this, any webpage open in another tab
+# could silently POST to this local server while it's running -- a known
+# "localhost CSRF" attack class (has hit Ollama, Docker Desktop, etc.):
+# browsers block a cross-origin page from *reading* the response, but not
+# always from *sending* the request. A custom header can only be attached
+# by JavaScript running on this app's own origin, since the browser refuses
+# to send a non-CORS-safelisted header cross-origin without an explicit,
+# matching Access-Control-Allow-* response -- which this server never sends.
+_DASHBOARD_TOKEN = uuid.uuid4().hex
+
+
+def _require_dashboard_token(x_dashboard_token: str | None = Header(default=None)) -> None:
+    if x_dashboard_token != _DASHBOARD_TOKEN:
+        raise HTTPException(403, "missing or invalid dashboard token")
 
 
 def _build_wp_client() -> WordPressClient:
@@ -86,7 +103,8 @@ def runtime_error_handler(request: Request, exc: RuntimeError) -> JSONResponse:
 
 @app.get("/", response_class=HTMLResponse)
 def index() -> str:
-    return (_STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    html = (_STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    return html.replace("__DASHBOARD_TOKEN__", _DASHBOARD_TOKEN)
 
 
 def _status_for(client: WordPressClient, item: dict, post_type: str) -> dict:
@@ -169,7 +187,7 @@ def _run_sync_job(job_id: str, post_id: int, post_type: str) -> None:
             _jobs[job_id].update(status="error", error=str(exc))
 
 
-@app.post("/api/jobs")
+@app.post("/api/jobs", dependencies=[Depends(_require_dashboard_token)])
 def create_job(req: JobRequest) -> dict:
     if req.action not in ("translate", "sync"):
         raise HTTPException(400, "action must be 'translate' or 'sync'")
@@ -202,7 +220,7 @@ def get_job_review(job_id: str) -> dict:
     return {"post_id": review.post_id, "post_type": review.post_type, "blocks": [b.model_dump() for b in review.blocks]}
 
 
-@app.post("/api/jobs/{job_id}/publish")
+@app.post("/api/jobs/{job_id}/publish", dependencies=[Depends(_require_dashboard_token)])
 def publish_job(job_id: str) -> dict:
     with _jobs_lock:
         job = _jobs.get(job_id)
