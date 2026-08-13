@@ -46,6 +46,20 @@ def test_translate_block_calls_translate_and_review_and_scores_result():
     assert result.qa.decision == "auto_approve"
 
 
+def test_translate_block_sanitizes_html_in_deepseek_response_before_qa_and_result():
+    block = ContentBlock(content_id="b1", type="paragraph", context="", source="Click here.", translate=True)
+    deepseek = _deepseek('Haz clic <script>alert(1)</script>aqui <a href="javascript:alert(2)">enlace</a>.')
+
+    result = translate_block(deepseek, block, "es", "European Spanish", [])
+
+    assert "<script" not in result.translation
+    assert "javascript:" not in result.translation
+    # The Reviewer must see the already-sanitized text, not the raw response.
+    deepseek.review.assert_called_once_with(
+        "Click here.", "Haz clic aqui <a>enlace</a>.", "European Spanish"
+    )
+
+
 def test_translate_block_passes_relevant_glossary_terms():
     entries = [GlossaryEntry(source="rover", target="rover", language="es", status="mandatory")]
     block = ContentBlock(content_id="b1", type="paragraph", context="", source="The rover moves.", translate=True)

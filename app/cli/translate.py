@@ -57,6 +57,7 @@ from app.cli.progress_html import ProgressTracker
 from app.extraction.content_extractor import extract_page_content
 from app.extraction.elementor_extractor import parse_elementor_document
 from app.extraction.schemas import ContentBlock
+from app.qa.html_sanitizer import sanitize_html
 from app.qa.numerical_checker import check_numbers
 from app.qa.scoring import QAReport, score_translation
 from app.qa.terminology_checker import check_protected_terms
@@ -148,6 +149,9 @@ def translate_block(
     translation_result = deepseek.translate(
         block.source, target_language_name, context=block.context, glossary_terms=relevant_terms
     )
+    # Sanitized before anything downstream (QA checks, WordPress payloads)
+    # ever sees it -- see app/qa/html_sanitizer.py for why.
+    translation_result.translation = sanitize_html(translation_result.translation)
     review_result = deepseek.review(block.source, translation_result.translation, target_language_name)
 
     numeric = check_numbers(block.source, translation_result.translation)
