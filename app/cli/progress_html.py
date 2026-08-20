@@ -25,6 +25,33 @@ _MAX_ROWS_SHOWN = 50
 _DECISION_LABEL = {"auto_approve": "Auto-approved", "human_review": "Needs review", "reject": "Rejected"}
 
 
+# QAReport field -> the short name shown per block. Keeps the order the
+# scoring module applies them in, so the row reads the same way every time.
+_CHECK_FIELDS = {
+    "numeric_passed": "numeric",
+    "terminology_passed": "terminology",
+    "url_passed": "url",
+    "structure_passed": "structure",
+    "review_passed": "review",
+}
+
+
+def _checks_from(qa) -> dict[str, bool]:
+    if qa is None:
+        return {}
+    return {label: bool(getattr(qa, field)) for field, label in _CHECK_FIELDS.items() if hasattr(qa, field)}
+
+
+def _checks_html(checks: dict[str, bool]) -> str:
+    """Only failures are named. A row listing five green ticks buries the one
+    red mark that matters, and the decision column already says it passed.
+    """
+    failed = [label for label, passed in checks.items() if not passed]
+    if not failed:
+        return ""
+    return " ".join(f'<span class="check check-fail">{html.escape(label)}</span>' for label in failed)
+
+
 class ProgressTracker:
     def __init__(
         self,
@@ -55,7 +82,14 @@ class ProgressTracker:
         usage: dict[str, dict[str, int]] | None = None,
         source: str = "",
         translation: str = "",
+        qa=None,
     ) -> None:
+        """`qa` is the block's QAReport when there is one. Optional so a
+        caller that has no report -- a skipped, untranslated block -- can
+        still record progress. Without it the view can only show a combined
+        score, which says a block was flagged but never which check flagged
+        it.
+        """
         with self._lock:
             self._completed.append(
                 {
@@ -65,6 +99,7 @@ class ProgressTracker:
                     "score": score,
                     "source": source,
                     "translation": translation,
+                    "checks": _checks_from(qa),
                 }
             )
             if usage is not None:
@@ -119,6 +154,7 @@ class ProgressTracker:
             f'<td class="muted">{html.escape(item["type"])}</td>'
             f'<td>{html.escape(_DECISION_LABEL.get(item["decision"], item["decision"]))}</td>'
             f'<td class="muted">{item["score"] if item["score"] is not None else "&ndash;"}</td>'
+            f'<td class="checks">{_checks_html(item.get("checks", {}))}</td>'
             f'<td class="text">{html.escape(item["source"])}</td>'
             f'<td class="text">{html.escape(item["translation"])}</td>'
             f"</tr>"
@@ -227,6 +263,9 @@ DeepSeek cost.</p>
   }}
   td{{ padding:10px 12px; border-bottom:1px solid var(--line); color:#3a3a3c; vertical-align:top; font-size:12.5px; }}
   td.text{{ white-space:pre-wrap; word-break:break-word; width:28%; }}
+  td.checks{{ line-height:1.9; }}
+  .check{{ display:inline-block; font-size:10px; font-weight:600; padding:1px 7px; border-radius:100px; letter-spacing:.2px; }}
+  .check-fail{{ background:var(--bad-soft); color:var(--bad); }}
   tr:last-child td{{ border-bottom:none; }}
   tr.row-human_review td{{ background:var(--warn-soft); }}
   tr.row-reject td{{ background:var(--bad-soft); }}
@@ -246,7 +285,7 @@ DeepSeek cost.</p>
 <div class="meta-line">{done} / {self.total} blocks ({pct}%) &middot; {elapsed:.0f}s elapsed</div>
 <div>{counts_html}</div>
 <table>
-<tr><th style="width:16%">Block</th><th style="width:10%">Type</th><th style="width:12%">Decision</th><th style="width:6%">Score</th><th>Source</th><th>Translation</th></tr>
+<tr><th style="width:14%">Block</th><th style="width:8%">Type</th><th style="width:11%">Decision</th><th style="width:5%">Score</th><th style="width:14%">Failed checks</th><th>Source</th><th>Translation</th></tr>
 {rows}
 </table>
 <p class="footnote">{"All blocks shown" if self._finished_decision else f"Most recent {_MAX_ROWS_SHOWN} shown"}, newest first.</p>

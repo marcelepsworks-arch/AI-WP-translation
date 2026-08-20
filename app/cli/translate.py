@@ -62,11 +62,14 @@ from app.extraction.content_extractor import extract_page_content
 from app.extraction.elementor_extractor import parse_elementor_document
 from app.extraction.schemas import ContentBlock
 from app.qa.html_sanitizer import sanitize_html
+from app.qa.html_structure_checker import check_html_structure
 from app.qa.numerical_checker import check_numbers
 from app.qa.scoring import QAReport, score_translation
 from app.qa.terminology_checker import check_protected_terms
 from app.qa.url_validator import check_urls
 from app.translation.deepseek_client import DeepSeekClient
+from app.storage.translation_memory import TranslationMemory
+from app.translation.fingerprint import memory_fingerprint
 from app.translation.glossary import GlossaryEntry, get_relevant_terms, load_glossary_files
 from app.translation.pricing import estimate_cost_usd
 from app.wordpress import content as wp_content
@@ -91,6 +94,11 @@ class BlockResult(BaseModel):
     source: str
     translation: str
     qa: QAReport | None = None
+    # True when this came from the cross-page translation memory instead of a
+    # fresh model call. Provenance, not a quality signal -- which is why it
+    # lives here and not on QAReport. A reused block inherits the original
+    # run's `review_passed`, and that inheritance should be visible.
+    from_memory: bool = False
 
 
 class PageTranslationResult(BaseModel):
@@ -132,8 +140,69 @@ def build_block_hashes(blocks: list[ContentBlock], results_by_id: dict[str, Bloc
     }
 
 
+def build_translation_memory(settings, glossary_entries: list[GlossaryEntry], target_language: str):
+    """Returns (memory, fingerprint), or (None, "") when the memory is off.
+
+    The fingerprint hashes the real prompts, glossary and model names, so any
+    change to them makes existing entries unreachable instead of silently
+    serving translations from a previous configuration.
+    """
+    if not settings.translation_memory_enabled:
+        return None, ""
+    fingerprint = memory_fingerprint(
+        LANGUAGE_NAMES.get(target_language, target_language),
+        glossary_entries, settings.default_model, settings.qa_model,
+    )
+    return TranslationMemory(settings.translation_memory_path), fingerprint
+
+
 def _protected_terms(glossary_entries: list[GlossaryEntry], language: str) -> list[str]:
     return [entry.target for entry in glossary_entries if entry.language == language and entry.target == entry.source]
+
+
+def _mechanical_qa(source: str, translation: str, protected_terms: list[str]):
+    """The four checks that cost nothing to run: numbers, terminology, URLs,
+    inline HTML structure. Shared by the fresh-translation path and the
+    memory-reuse path so a reused block is held to the same bar.
+    """
+    return (
+        check_numbers(source, translation),
+        check_protected_terms(source, translation, protected_terms),
+        check_urls(source, translation),
+        check_html_structure(source, translation),
+    )
+
+
+def _reuse_from_memory(
+    block: ContentBlock,
+    remembered: str,
+    protected_terms: list[str],
+) -> BlockResult | None:
+    """Re-verifies a remembered translation before reusing it. Returns None
+    when it no longer holds up, so the caller falls back to translating
+    fresh. The entry was stored as `auto_approve` against byte-identical
+    source under the same fingerprint, so the original run's `review_passed`
+    carries over -- but only if the mechanical checks still agree.
+    """
+    numeric, terminology, url, structure = _mechanical_qa(block.source, remembered, protected_terms)
+    if structure.repaired:
+        remembered = structure.repaired_translation
+
+    qa = score_translation(numeric, terminology, url, structure, review_passed=True)
+    if qa.decision != "auto_approve":
+        logger.warning(
+            "block %s (%s): memory entry failed re-check (numeric=%s terminology=%s url=%s structure=%s),"
+            " translating fresh | remembered=%r",
+            block.content_id, block.type, qa.numeric_passed, qa.terminology_passed,
+            qa.url_passed, qa.structure_passed, remembered,
+        )
+        return None
+
+    logger.info("block %s (%s): reused from translation memory, no model call", block.content_id, block.type)
+    return BlockResult(
+        content_id=block.content_id, type=block.type, source=block.source,
+        translation=remembered, qa=qa, from_memory=True,
+    )
 
 
 def translate_block(
@@ -142,12 +211,23 @@ def translate_block(
     target_language: str,
     target_language_name: str,
     glossary_entries: list[GlossaryEntry],
+    memory=None,
+    fingerprint: str = "",
 ) -> BlockResult:
     if not block.translate or not block.source.strip():
         logger.info("block %s (%s): skipped (not translatable)", block.content_id, block.type)
         return BlockResult(
             content_id=block.content_id, type=block.type, source=block.source, translation=block.source
         )
+
+    protected_terms = _protected_terms(glossary_entries, target_language)
+
+    if memory is not None:
+        remembered = memory.lookup(block.source, target_language, fingerprint)
+        if remembered is not None:
+            reused = _reuse_from_memory(block, remembered, protected_terms)
+            if reused is not None:
+                return reused
 
     relevant_terms = get_relevant_terms(block.source, glossary_entries, language=target_language)
     translation_result = deepseek.translate(
@@ -158,12 +238,20 @@ def translate_block(
     translation_result.translation = sanitize_html(translation_result.translation)
     review_result = deepseek.review(block.source, translation_result.translation, target_language_name)
 
-    numeric = check_numbers(block.source, translation_result.translation)
-    terminology = check_protected_terms(
-        block.source, translation_result.translation, _protected_terms(glossary_entries, target_language)
+    numeric, terminology, url, _ = _mechanical_qa(
+        block.source, translation_result.translation, protected_terms
     )
-    url = check_urls(block.source, translation_result.translation)
-    qa = score_translation(numeric, terminology, url, review_passed=review_result.passed)
+    # Repairs a space lost next to an inline tag (`2x<a href=...>`) before the
+    # translation goes any further -- see app/qa/html_structure_checker.py.
+    structure = check_html_structure(block.source, translation_result.translation)
+    if structure.repaired:
+        logger.warning(
+            "block %s (%s): repaired lost spacing at %s | before=%r after=%r",
+            block.content_id, block.type, ", ".join(structure.glued_boundaries),
+            translation_result.translation, structure.repaired_translation,
+        )
+        translation_result.translation = structure.repaired_translation
+    qa = score_translation(numeric, terminology, url, structure, review_passed=review_result.passed)
 
     logger.info(
         "block %s (%s): %s score=%d confidence=%.2f",
@@ -171,13 +259,18 @@ def translate_block(
     )
     if qa.decision != "auto_approve":
         logger.warning(
-            "block %s (%s) flagged %s: numeric_passed=%s terminology_passed=%s url_passed=%s review_passed=%s"
-            " | source=%r translation=%r review_issues=%s",
+            "block %s (%s) flagged %s: numeric_passed=%s terminology_passed=%s url_passed=%s"
+            " structure_passed=%s review_passed=%s | source=%r translation=%r review_issues=%s",
             block.content_id, block.type, qa.decision,
-            qa.numeric_passed, qa.terminology_passed, qa.url_passed, qa.review_passed,
+            qa.numeric_passed, qa.terminology_passed, qa.url_passed, qa.structure_passed, qa.review_passed,
             block.source, translation_result.translation,
             [f"{i.type}: {i.description}" for i in review_result.issues],
         )
+
+    # Only auto_approve earns a place in the memory: anything a human still
+    # has to look at must not be served silently on another page.
+    if memory is not None and qa.decision == "auto_approve":
+        memory.remember(block.source, translation_result.translation, target_language, fingerprint)
 
     return BlockResult(
         content_id=block.content_id,
@@ -195,6 +288,8 @@ def translate_blocks(
     glossary_entries: list[GlossaryEntry],
     max_workers: int = 1,
     progress: ProgressTracker | None = None,
+    memory=None,
+    fingerprint: str = "",
 ) -> list[BlockResult]:
     """Translates every block, printing live progress ("[i/N] id -> decision")
     since a real page can have 100+ blocks and take several minutes. When
@@ -212,13 +307,17 @@ def translate_blocks(
     def _translate_one(indexed_block: tuple[int, ContentBlock]) -> tuple[int, BlockResult]:
         index, block = indexed_block
         print(f"[{index + 1}/{total}] translating {block.content_id} ({block.type})...", flush=True)
-        result = translate_block(deepseek, block, target_language, target_language_name, glossary_entries)
+        result = translate_block(
+            deepseek, block, target_language, target_language_name, glossary_entries,
+            memory=memory, fingerprint=fingerprint,
+        )
         decision = result.qa.decision if result.qa else "skipped"
         print(f"[{index + 1}/{total}] {block.content_id} -> {decision}", flush=True)
         if progress is not None:
             progress.record(
                 block.content_id, block.type, decision, result.qa.score if result.qa else None,
                 usage=deepseek.usage, source=block.source, translation=result.translation,
+                qa=result.qa,
             )
         return index, result
 
@@ -398,6 +497,8 @@ def translate_page(
     progress_html_path: Path | None = None,
     review_json_path: Path | None = None,
     auto_publish_mode: str = "off",
+    memory=None,
+    fingerprint: str = "",
 ) -> PageTranslationResult:
     logger.info("fetching %s %d for translation to %s", post_type, post_id, target_language)
     get_fn = wp_content.get_page if post_type == "page" else wp_content.get_post
@@ -425,7 +526,8 @@ def translate_page(
         else None
     )
     results = translate_blocks(
-        deepseek, all_blocks, target_language, glossary_entries, max_workers=max_workers, progress=progress
+        deepseek, all_blocks, target_language, glossary_entries, max_workers=max_workers, progress=progress,
+        memory=memory, fingerprint=fingerprint,
     )
     results_by_id = {r.content_id: r for r in results}
     decision = overall_decision(results)
@@ -568,6 +670,8 @@ def main() -> None:
         Path(f"logs/review_{args.post_id}_{args.language}.json") if args.review else None
     )
 
+    memory, fingerprint = build_translation_memory(settings, glossary_entries, args.language)
+
     result = translate_page(
         wp_client,
         deepseek,
@@ -580,6 +684,8 @@ def main() -> None:
         progress_html_path=progress_html_path,
         review_json_path=review_json_path,
         auto_publish_mode=settings.auto_publish_mode,
+        memory=memory,
+        fingerprint=fingerprint,
     )
 
     print(f"Post {result.post_id} ({result.post_type}) -> {result.target_language}")

@@ -1,12 +1,14 @@
-"""Combines the mechanical QA checks (numbers, terminology, URLs) and
-the DeepSeek Reviewer result (FASE 4.4) into one score and decision,
-using the thresholds from the project brief, section 13:
->=95 auto-approve, 85-94 human review recommended, <85 automatic rejection.
+"""Combines the mechanical QA checks (numbers, terminology, URLs, inline
+HTML structure) and the DeepSeek Reviewer result (FASE 4.4) into one
+score and decision, using the thresholds from the project brief,
+section 13: >=95 auto-approve, 85-94 human review recommended, <85
+automatic rejection.
 """
 from __future__ import annotations
 
 from pydantic import BaseModel
 
+from app.qa.html_structure_checker import HtmlStructureResult
 from app.qa.numerical_checker import NumericCheckResult
 from app.qa.terminology_checker import TerminologyCheckResult
 from app.qa.url_validator import UrlCheckResult
@@ -15,6 +17,11 @@ _NUMERIC_PENALTY = 40
 _TERMINOLOGY_PENALTY = 25
 _URL_PENALTY = 20
 _REVIEW_PENALTY = 30
+# A changed tag skeleton means a link, emphasis or line break was lost,
+# invented or repointed. Penalised on the same order as terminology: it
+# is a real content defect, not a typographic one, and unlike a lost
+# space it cannot be repaired automatically.
+_STRUCTURE_PENALTY = 25
 
 
 def _decide(score: int) -> str:
@@ -29,6 +36,7 @@ class QAReport(BaseModel):
     numeric_passed: bool
     terminology_passed: bool
     url_passed: bool
+    structure_passed: bool
     review_passed: bool
     score: int
     decision: str
@@ -38,6 +46,7 @@ def score_translation(
     numeric_result: NumericCheckResult,
     terminology_result: TerminologyCheckResult,
     url_result: UrlCheckResult,
+    structure_result: HtmlStructureResult,
     review_passed: bool,
 ) -> QAReport:
     score = 100
@@ -47,6 +56,8 @@ def score_translation(
         score -= _TERMINOLOGY_PENALTY
     if not url_result.passed:
         score -= _URL_PENALTY
+    if not structure_result.passed:
+        score -= _STRUCTURE_PENALTY
     if not review_passed:
         score -= _REVIEW_PENALTY
     score = max(0, score)
@@ -55,6 +66,7 @@ def score_translation(
         numeric_passed=numeric_result.passed,
         terminology_passed=terminology_result.passed,
         url_passed=url_result.passed,
+        structure_passed=structure_result.passed,
         review_passed=review_passed,
         score=score,
         decision=_decide(score),

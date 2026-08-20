@@ -31,6 +31,7 @@ from pydantic import BaseModel
 from app.cli.progress_html import ProgressTracker
 from app.cli.translate import (
     BlockResult,
+    build_translation_memory,
     build_translation_payload,
     configure_logging,
     hash_source,
@@ -88,6 +89,8 @@ def update_page(
     max_workers: int = 1,
     progress_html_path: Path | None = None,
     auto_publish_mode: str = "off",
+    memory=None,
+    fingerprint: str = "",
 ) -> SyncResult:
     """Re-translates only the blocks whose source text changed since the
     last translation, and updates the existing translated post in place.
@@ -133,7 +136,10 @@ def update_page(
         else None
     )
     new_results = (
-        translate_blocks(deepseek, changed_blocks, target_language, glossary_entries, max_workers=max_workers, progress=progress)
+        translate_blocks(
+            deepseek, changed_blocks, target_language, glossary_entries, max_workers=max_workers,
+            progress=progress, memory=memory, fingerprint=fingerprint,
+        )
         if changed_blocks
         else []
     )
@@ -189,6 +195,8 @@ def sync_page(
     max_workers: int = 1,
     progress_html_path: Path | None = None,
     auto_publish_mode: str = "off",
+    memory=None,
+    fingerprint: str = "",
 ) -> SyncResult:
     status = wp_wpml.get_translation_status(wp_client, post_id, target_language)
 
@@ -197,7 +205,7 @@ def sync_page(
         result = translate_page(
             wp_client, deepseek, glossary_entries, post_id, post_type, target_language,
             dry_run=False, max_workers=max_workers, progress_html_path=progress_html_path,
-            auto_publish_mode=auto_publish_mode,
+            auto_publish_mode=auto_publish_mode, memory=memory, fingerprint=fingerprint,
         )
         return SyncResult(
             post_id=post_id, post_type=post_type, target_language=target_language, outcome="created",
@@ -256,9 +264,12 @@ def main() -> None:
     glossary_entries = load_glossary_files(_GLOSSARY_FILES)
     progress_html_path = None if args.no_progress_html else Path("logs/progress.html")
 
+    memory, fingerprint = build_translation_memory(settings, glossary_entries, args.language)
+
     result = sync_page(
         wp_client, deepseek, glossary_entries, args.post_id, args.post_type, args.language,
         max_workers=args.workers, progress_html_path=progress_html_path,
+        memory=memory, fingerprint=fingerprint,
         auto_publish_mode=settings.auto_publish_mode,
     )
 

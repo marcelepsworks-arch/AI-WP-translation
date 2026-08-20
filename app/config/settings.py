@@ -25,6 +25,13 @@ class Settings:
     # CLI flag someone could pass once by habit) -- see README "Autonomous
     # publishing" for the tradeoffs before turning this on.
     auto_publish_mode: str = "off"
+    # Cross-page translation memory (app/storage/translation_memory.py).
+    # On by default: it only ever reuses a translation that scored
+    # auto_approve under an identical configuration fingerprint, and every
+    # hit is re-checked before use. Set TRANSLATION_MEMORY=off to force
+    # every block through the model again.
+    translation_memory_enabled: bool = True
+    translation_memory_path: str = "logs/translation_memory.sqlite3"
 
 
 def load_settings(env: dict[str, str] | None = None) -> Settings:
@@ -57,4 +64,6 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         source_language=source.get("SOURCE_LANGUAGE", "en"),
         target_languages=target_languages,
         auto_publish_mode=auto_publish_mode,
+        translation_memory_enabled=source.get("TRANSLATION_MEMORY", "on").strip().lower() != "off",
+        translation_memory_path=source.get("TRANSLATION_MEMORY_PATH", "logs/translation_memory.sqlite3"),
     )

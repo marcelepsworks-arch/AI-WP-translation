@@ -156,11 +156,11 @@ def test_overall_decision_is_reject_when_any_block_rejected():
     results = [
         BlockResult(
             content_id="b1", type="paragraph", source="a", translation="a",
-            qa=QAReport(numeric_passed=True, terminology_passed=True, url_passed=True, review_passed=True, score=100, decision="auto_approve"),
+            qa=QAReport(numeric_passed=True, terminology_passed=True, url_passed=True, structure_passed=True, review_passed=True, score=100, decision="auto_approve"),
         ),
         BlockResult(
             content_id="b2", type="paragraph", source="b", translation="b",
-            qa=QAReport(numeric_passed=False, terminology_passed=True, url_passed=True, review_passed=True, score=60, decision="reject"),
+            qa=QAReport(numeric_passed=False, terminology_passed=True, url_passed=True, structure_passed=True, review_passed=True, score=60, decision="reject"),
         ),
     ]
 
@@ -173,7 +173,7 @@ def test_overall_decision_is_human_review_when_no_reject_but_some_human_review()
     results = [
         BlockResult(
             content_id="b1", type="paragraph", source="a", translation="a",
-            qa=QAReport(numeric_passed=True, terminology_passed=True, url_passed=True, review_passed=False, score=70, decision="human_review"),
+            qa=QAReport(numeric_passed=True, terminology_passed=True, url_passed=True, structure_passed=True, review_passed=False, score=70, decision="human_review"),
         ),
     ]
 
