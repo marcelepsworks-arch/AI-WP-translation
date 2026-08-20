@@ -6,8 +6,11 @@ of the CLI.
 Deliberately thin: every button here calls the exact same, already-tested
 orchestrator functions the CLI uses (`translate_page`, `sync_page`,
 `publish_review`) -- no new translation logic lives here, only HTTP
-plumbing and an in-memory job registry (single-user local tool, so a
-plain dict + lock is enough; no task queue).
+plumbing and a job registry.
+
+Job state lives in `app.webui.jobstore` rather than a module dict: an
+undo button and a running cost total are both worthless if restarting the
+dashboard erases what was run.
 """
 from __future__ import annotations
 
@@ -24,11 +27,16 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
 from app.cli.publish import publish_review
-from app.cli.translate import PageReview, configure_logging, translate_page
+from app.cli.translate import PageReview, build_translation_memory, configure_logging, translate_page
 from app.cli.sync import sync_page
 from app.config.settings import load_settings
 from app.translation.deepseek_client import DeepSeekClient
 from app.translation.glossary import load_glossary_files
+from app.translation.pricing import estimate_cost_usd
+from app.webui.glossary_editor import read_glossary, write_glossary
+from app.webui.jobstore import JobStore
+from app.webui.preflight import describe_impact, save_wpml_snapshot
+from app.webui.undo import describe_undo, perform_undo
 from app.wordpress import content as wp_content
 from app.wordpress import wpml as wp_wpml
 from app.wordpress.client import WordPressClient
@@ -40,8 +48,7 @@ _LOGS_DIR = Path("logs")
 _GLOSSARY_FILES = [Path("glossary/gnss.json"), Path("glossary/surveying.json")]
 _TARGET_LANGUAGE = "es"
 
-_jobs: dict[str, dict] = {}
-_jobs_lock = threading.Lock()
+_jobs = JobStore(_LOGS_DIR / "jobs.sqlite3")
 
 # Random per-process secret, embedded server-side into the page it serves at
 # `/` (never sent to any other origin) and required as a header on every
@@ -161,6 +168,7 @@ def _run_translate_job(job_id: str, post_id: int, post_type: str, publish_direct
     settings = load_settings()
     glossary_entries = load_glossary_files(_GLOSSARY_FILES)
     progress_path = _LOGS_DIR / f"progress_{job_id}.html"
+    memory, fingerprint = build_translation_memory(settings, glossary_entries, _TARGET_LANGUAGE)
     # Either the operator's persistent .env choice, or this one job's
     # explicit one-off override -- whichever asks for the more permissive
     # behaviour wins for *this* job only; the .env setting itself never changes.
@@ -175,29 +183,29 @@ def _run_translate_job(job_id: str, post_id: int, post_type: str, publish_direct
             result = translate_page(
                 wp_client, deepseek, glossary_entries, post_id, post_type, _TARGET_LANGUAGE,
                 dry_run=False, max_workers=5, progress_html_path=progress_path,
-                auto_publish_mode=effective_mode,
+                auto_publish_mode=effective_mode, memory=memory, fingerprint=fingerprint,
             )
-            with _jobs_lock:
-                _jobs[job_id].update(
-                    status="done", outcome="created", overall_decision=result.overall_decision,
-                    translated_post_id=result.translated_post_id,
-                )
+            _jobs.update(
+                job_id, status="done", outcome="created", overall_decision=result.overall_decision,
+                translated_post_id=result.translated_post_id, usage=deepseek.usage,
+            )
             return
 
         review_path = _LOGS_DIR / f"review_{job_id}.json"
         result = translate_page(
             wp_client, deepseek, glossary_entries, post_id, post_type, _TARGET_LANGUAGE,
             dry_run=True, max_workers=5, progress_html_path=progress_path, review_json_path=review_path,
+            memory=memory, fingerprint=fingerprint,
         )
-        with _jobs_lock:
-            _jobs[job_id].update(
-                status="awaiting_review", outcome="translated", overall_decision=result.overall_decision,
-                review_path=str(review_path),
-            )
+        _jobs.update(
+            job_id, status="awaiting_review", outcome="translated",
+            overall_decision=result.overall_decision, review_path=str(review_path), usage=deepseek.usage,
+        )
     except Exception as exc:  # noqa: BLE001 -- surfaced to the dashboard, not swallowed
         logger.exception("translate job %s failed", job_id)
-        with _jobs_lock:
-            _jobs[job_id].update(status="error", error=str(exc))
+        # Usage is recorded even on failure: tokens spent before the error
+        # were still billed, and a cost total that quietly omits them lies.
+        _jobs.update(job_id, status="error", error=str(exc), usage=deepseek.usage)
 
 
 def _run_sync_job(job_id: str, post_id: int, post_type: str, publish_directly: bool = False) -> None:
@@ -206,21 +214,34 @@ def _run_sync_job(job_id: str, post_id: int, post_type: str, publish_directly: b
     settings = load_settings()
     glossary_entries = load_glossary_files(_GLOSSARY_FILES)
     progress_path = _LOGS_DIR / f"progress_{job_id}.html"
+    memory, fingerprint = build_translation_memory(settings, glossary_entries, _TARGET_LANGUAGE)
     effective_mode = "all" if publish_directly else settings.auto_publish_mode
     try:
         result = sync_page(
             wp_client, deepseek, glossary_entries, post_id, post_type, _TARGET_LANGUAGE,
             max_workers=5, progress_html_path=progress_path, auto_publish_mode=effective_mode,
+            memory=memory, fingerprint=fingerprint,
         )
-        with _jobs_lock:
-            _jobs[job_id].update(
-                status="done", outcome=result.outcome, translated_post_id=result.translated_post_id,
-                blocks_translated=result.blocks_translated, blocks_reused=result.blocks_reused,
-            )
+        _jobs.update(
+            job_id, status="done", outcome=result.outcome, translated_post_id=result.translated_post_id,
+            blocks_translated=result.blocks_translated, blocks_reused=result.blocks_reused,
+            usage=deepseek.usage,
+        )
     except Exception as exc:  # noqa: BLE001
         logger.exception("sync job %s failed", job_id)
-        with _jobs_lock:
-            _jobs[job_id].update(status="error", error=str(exc))
+        _jobs.update(job_id, status="error", error=str(exc), usage=deepseek.usage)
+
+
+@app.get("/api/impact")
+def get_impact(post_id: int, post_type: str = "page", action: str = "translate", publish_directly: bool = False) -> dict:
+    """What the button is about to do, before it is pressed. Until now this
+    only reached the server log as a warning, where the person clicking
+    never saw it.
+    """
+    return describe_impact(
+        _build_wp_client(), post_id, post_type, action, _TARGET_LANGUAGE,
+        publish_directly=publish_directly, auto_publish_mode=load_settings().auto_publish_mode,
+    )
 
 
 @app.post("/api/jobs", dependencies=[Depends(_require_dashboard_token)])
@@ -229,11 +250,15 @@ def create_job(req: JobRequest) -> dict:
         raise HTTPException(400, "action must be 'translate' or 'sync'")
 
     job_id = uuid.uuid4().hex[:12]
-    with _jobs_lock:
-        _jobs[job_id] = {
-            "status": "running", "post_id": req.post_id, "post_type": req.post_type, "action": req.action,
-            "publish_directly": req.publish_directly,
-        }
+    # Taken before the job starts, so the pre-link WPML state is on disk even
+    # if linking later goes wrong -- the one step whose failure scrambles
+    # translation relationships rather than content.
+    snapshot_path = save_wpml_snapshot(_build_wp_client(), req.post_id, job_id, _LOGS_DIR)
+    _jobs.create(job_id, {
+        "status": "running", "post_id": req.post_id, "post_type": req.post_type, "action": req.action,
+        "publish_directly": req.publish_directly,
+        "wpml_snapshot_path": str(snapshot_path) if snapshot_path else None,
+    })
 
     target = _run_translate_job if req.action == "translate" else _run_sync_job
     threading.Thread(
@@ -244,8 +269,7 @@ def create_job(req: JobRequest) -> dict:
 
 @app.get("/api/jobs/{job_id}")
 def get_job(job_id: str) -> dict:
-    with _jobs_lock:
-        job = _jobs.get(job_id)
+    job = _jobs.get(job_id)
     if job is None:
         raise HTTPException(404, "unknown job")
     return job
@@ -253,8 +277,7 @@ def get_job(job_id: str) -> dict:
 
 @app.get("/api/jobs/{job_id}/review")
 def get_job_review(job_id: str) -> dict:
-    with _jobs_lock:
-        job = _jobs.get(job_id)
+    job = _jobs.get(job_id)
     if job is None or "review_path" not in job:
         raise HTTPException(404, "no review artifact for this job")
     review = PageReview.model_validate_json(Path(job["review_path"]).read_text(encoding="utf-8"))
@@ -263,8 +286,7 @@ def get_job_review(job_id: str) -> dict:
 
 @app.post("/api/jobs/{job_id}/publish", dependencies=[Depends(_require_dashboard_token)])
 def publish_job(job_id: str) -> dict:
-    with _jobs_lock:
-        job = _jobs.get(job_id)
+    job = _jobs.get(job_id)
     if job is None or "review_path" not in job:
         raise HTTPException(404, "no review artifact for this job")
 
@@ -272,9 +294,91 @@ def publish_job(job_id: str) -> dict:
     review = PageReview.model_validate_json(Path(job["review_path"]).read_text(encoding="utf-8"))
     translated_post_id = publish_review(wp_client, review)
 
-    with _jobs_lock:
-        _jobs[job_id].update(status="done", outcome="published", translated_post_id=translated_post_id)
+    _jobs.update(job_id, status="done", outcome="published", translated_post_id=translated_post_id)
     return {"translated_post_id": translated_post_id}
+
+
+def _admin_base_url() -> str:
+    return os.environ.get("PROD_ADMIN_URL") or os.environ.get("WP_URL") or os.environ.get("STAGING_URL", "")
+
+
+@app.get("/api/history")
+def get_history(limit: int = 50) -> dict:
+    """Past jobs, newest first, each with its own estimated cost and an undo
+    classification. Survives a dashboard restart, which the old in-memory
+    registry did not.
+    """
+    admin_base = _admin_base_url()
+    jobs = _jobs.list_recent(limit=limit)
+    for job in jobs:
+        job["estimated_cost_usd"] = estimate_cost_usd(job.get("usage") or {})
+        job["undo"] = describe_undo(job, admin_base)
+
+    return {
+        "jobs": jobs,
+        # Totalled over what is listed, and labelled as an estimate: DeepSeek's
+        # own dashboard remains the billing source of truth (see pricing.py).
+        "total_estimated_cost_usd": sum(job["estimated_cost_usd"] for job in jobs),
+    }
+
+
+@app.get("/api/memory")
+def get_memory_stats() -> dict:
+    """Size and hit count of the cross-page translation memory. `hits` is
+    how many block translations were served without a model call.
+    """
+    settings = load_settings()
+    if not settings.translation_memory_enabled:
+        return {"enabled": False, "entries": 0, "hits": 0}
+
+    from app.storage.translation_memory import TranslationMemory
+
+    return {"enabled": True, **TranslationMemory(settings.translation_memory_path).stats()}
+
+
+@app.get("/api/jobs/{job_id}/undo")
+def get_job_undo(job_id: str) -> dict:
+    job = _jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, "unknown job")
+    return describe_undo(job, _admin_base_url())
+
+
+@app.post("/api/jobs/{job_id}/undo", dependencies=[Depends(_require_dashboard_token)])
+def undo_job(job_id: str) -> dict:
+    job = _jobs.get(job_id)
+    if job is None:
+        raise HTTPException(404, "unknown job")
+
+    try:
+        result = perform_undo(_build_wp_client(), job, _admin_base_url())
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    _jobs.update(job_id, status="undone", outcome="trashed")
+    return result
+
+
+@app.get("/api/glossary")
+def get_glossary() -> dict:
+    return {path.stem: read_glossary(path) for path in _GLOSSARY_FILES if path.exists()}
+
+
+class GlossaryUpdate(BaseModel):
+    entries: list[dict]
+
+
+@app.put("/api/glossary/{name}", dependencies=[Depends(_require_dashboard_token)])
+def put_glossary(name: str, update: GlossaryUpdate) -> dict:
+    path = next((p for p in _GLOSSARY_FILES if p.stem == name), None)
+    if path is None:
+        raise HTTPException(404, f"unknown glossary '{name}'")
+
+    try:
+        entries = write_glossary(path, update.entries)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"name": name, "entries": entries}
 
 
 @app.get("/progress/{job_id}")

@@ -104,6 +104,32 @@
   }
   .autonomous-banner.show{ display:flex; }
   .autonomous-banner .dot{ width:7px; height:7px; border-radius:50%; background:var(--bad); animation:pulse 1.4s ease-in-out infinite; }
+
+  /* Impact radius: what the button is about to do, before it is pressed. */
+  .impact-line{ display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:12.5px; }
+  .impact-line:last-child{ border-bottom:none; }
+  .impact-key{ width:150px; flex:none; color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:.3px; padding-top:2px; }
+  .impact-val{ font-weight:600; }
+  .impact-val small{ display:block; font-weight:400; color:var(--ink-soft); font-size:11.5px; margin-top:2px; }
+  .impact-live{ background:var(--bad-soft); color:var(--bad); border-radius:8px; padding:10px 14px; margin-top:14px; font-size:12.5px; font-weight:600; }
+  .impact-safe{ background:var(--good-soft); color:var(--good); border-radius:8px; padding:10px 14px; margin-top:14px; font-size:12.5px; }
+
+  /* Per-check breakdown, so a flagged block says which check flagged it. */
+  .checks{ display:flex; gap:5px; flex-wrap:wrap; margin-top:4px; }
+  .check{ font-size:10px; font-weight:600; padding:2px 7px; border-radius:100px; letter-spacing:.2px; }
+  .check-pass{ background:var(--good-soft); color:var(--good); }
+  .check-fail{ background:var(--bad-soft); color:var(--bad); }
+
+  .cost-chip{ background:var(--accent-soft); color:var(--accent); border-radius:100px; padding:4px 12px; font-size:11.5px; font-weight:600; }
+  .history-empty{ color:var(--ink-soft); padding:18px; text-align:center; font-size:12.5px; }
+  .glossary-entry{ display:grid; grid-template-columns:1fr 1fr 70px 110px 32px; gap:8px; margin-bottom:6px; }
+  .glossary-entry input, .glossary-entry select{
+    font-family:inherit; font-size:12px; padding:6px 8px; border:1px solid var(--line); border-radius:7px; width:100%;
+  }
+  .glossary-tabs{ display:flex; gap:8px; margin-bottom:14px; }
+  .glossary-tab{ background:var(--bg-card); color:var(--ink-soft); }
+  .glossary-tab.active{ background:var(--accent); color:#fff; }
+  .btn-danger{ background:var(--bad-soft); color:var(--bad); }
 </style>
 </head>
 <body>
@@ -144,7 +170,13 @@
 
   <div class="toolbar">
     <span id="summary" class="type-tag"></span>
-    <button class="btn-secondary" onclick="loadPages()">Refresh list</button>
+    <div class="actions">
+      <span class="cost-chip" id="cost-chip" style="display:none"></span>
+      <span class="cost-chip" id="memory-chip" style="display:none"></span>
+      <button class="btn-secondary" onclick="openGlossary()">Glossary</button>
+      <button class="btn-secondary" onclick="openHistory()">History</button>
+      <button class="btn-secondary" onclick="loadPages()">Refresh list</button>
+    </div>
   </div>
 
   <table id="pages-table" style="display:none">
@@ -152,6 +184,41 @@
     <tbody id="pages-body"></tbody>
   </table>
   <div id="loading" class="loading">Loading pages and posts…</div>
+</div>
+
+<div class="modal-backdrop" id="impact-modal">
+  <div class="modal" style="width:min(620px,92vw)">
+    <h2>Before this runs</h2>
+    <div id="impact-body"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="cancelImpact()">Cancel</button>
+      <button class="btn-primary" id="impact-confirm-btn" onclick="confirmImpact()">Run it</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="history-modal">
+  <div class="modal">
+    <h2>Job history</h2>
+    <div id="history-body"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeHistory()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="glossary-modal">
+  <div class="modal">
+    <h2>Glossary</h2>
+    <div class="glossary-tabs" id="glossary-tabs"></div>
+    <div id="glossary-body"></div>
+    <div class="modal-actions">
+      <span class="type-tag" id="glossary-msg" style="margin-right:auto"></span>
+      <button class="btn-secondary" onclick="addGlossaryEntry()">Add term</button>
+      <button class="btn-secondary" onclick="closeGlossary()">Close</button>
+      <button class="btn-good" id="glossary-save-btn" onclick="saveGlossary()">Save</button>
+    </div>
+  </div>
 </div>
 
 <div class="modal-backdrop" id="review-modal">
@@ -259,8 +326,61 @@ function makeButton(label, cls, onClick) {
   return btn;
 }
 
+// Nothing starts until the operator has seen its blast radius. Until now
+// this only existed as a logger.warning nobody reads.
+let pendingJob = null;
+
 async function startJob(item, action, checkboxId) {
   const publishDirectly = checkboxId ? !!document.getElementById(checkboxId)?.checked : false;
+  const params = new URLSearchParams({
+    post_id: item.id, post_type: item.post_type, action, publish_directly: publishDirectly,
+  });
+  const impact = await (await fetch(`/api/impact?${params}`)).json();
+  pendingJob = { item, action, publishDirectly };
+  showImpact(impact);
+}
+
+function showImpact(impact) {
+  const live = impact.resulting_status === "publish";
+  const target = impact.target === "create"
+    ? { title: "Creates a new post", detail: `A new ${impact.post_type} in the translated language. Nothing existing is overwritten.` }
+    : { title: `Updates post #${impact.translated_post_id} in place`, detail: "Its current content is replaced. WordPress keeps the previous version in its revision history." };
+  const statusText = {
+    publish: { title: "Publishes live immediately", detail: "It goes straight onto the site with no review step." },
+    draft: { title: "Saves as a draft", detail: "Nothing appears on the live site until you publish it yourself." },
+    depends_on_qa: { title: "Depends on the QA result", detail: "AUTO_PUBLISH_MODE=qa_gated: it publishes itself only if QA flags nothing, otherwise it drafts." },
+  }[impact.resulting_status];
+
+  document.getElementById("impact-body").innerHTML = `
+    <div class="impact-line"><div class="impact-key">Action</div>
+      <div class="impact-val">${escapeHtml(impact.action)} &middot; ${escapeHtml(impact.post_type)} #${impact.post_id}</div></div>
+    <div class="impact-line"><div class="impact-key">What it writes</div>
+      <div class="impact-val">${escapeHtml(target.title)}<small>${escapeHtml(target.detail)}</small></div></div>
+    <div class="impact-line"><div class="impact-key">Resulting state</div>
+      <div class="impact-val">${escapeHtml(statusText.title)}<small>${escapeHtml(statusText.detail)}</small></div></div>
+    <div class="impact-line"><div class="impact-key">Source page</div>
+      <div class="impact-val">Never touched<small>No code path writes to the source-language post.</small></div></div>
+    ${live
+      ? '<div class="impact-live">This will be visible on the live site as soon as it finishes.</div>'
+      : '<div class="impact-safe">Nothing becomes publicly visible from this run on its own.</div>'}`;
+
+  const btn = document.getElementById("impact-confirm-btn");
+  btn.className = live ? "btn-good" : "btn-primary";
+  btn.textContent = live ? "Run and publish live" : "Run it";
+  document.getElementById("impact-modal").classList.add("open");
+}
+
+function cancelImpact() {
+  pendingJob = null;
+  document.getElementById("impact-modal").classList.remove("open");
+}
+
+async function confirmImpact() {
+  if (!pendingJob) return;
+  const { item, action, publishDirectly } = pendingJob;
+  document.getElementById("impact-modal").classList.remove("open");
+  pendingJob = null;
+
   const res = await fetch("/api/jobs", {
     method: "POST", headers: { "Content-Type": "application/json", "X-Dashboard-Token": DASHBOARD_TOKEN },
     body: JSON.stringify({ post_id: item.id, post_type: item.post_type, action, publish_directly: publishDirectly }),
@@ -322,6 +442,8 @@ function onJobSettled(item, jobId, job) {
   // done: created / updated / up_to_date / published -- refresh from server
   // so the row reflects the real, current WPML status.
   loadPages();
+  loadCost();
+  loadMemory();
 }
 
 async function openReview(jobId) {
@@ -338,6 +460,7 @@ async function openReview(jobId) {
       <div class="qa" style="color:${decision === 'reject' ? 'var(--bad)' : decision === 'human_review' ? 'var(--warn)' : 'var(--good)'}">
         ${block.content_id} &middot; ${decision}${block.qa ? " · score " + block.qa.score : ""}
       </div>
+      ${checkChips(block.qa)}
       <div class="cols">
         <div class="src">${escapeHtml(block.source)}</div>
         <div>${escapeHtml(block.translation)}</div>
@@ -364,6 +487,162 @@ async function publishCurrent() {
   loadPages();
 }
 
+// Which check flagged a block. scoring.py has always computed these; the
+// human view only ever showed the combined score, so "why" stayed hidden.
+const CHECK_LABELS = {
+  numeric_passed: "numbers",
+  terminology_passed: "terminology",
+  url_passed: "URLs",
+  structure_passed: "HTML structure",
+  review_passed: "AI reviewer",
+};
+
+function checkChips(qa) {
+  if (!qa) return "";
+  const chips = Object.entries(CHECK_LABELS)
+    .filter(([key]) => key in qa)
+    .map(([key, label]) =>
+      `<span class="check ${qa[key] ? "check-pass" : "check-fail"}">${qa[key] ? "✓" : "✗"} ${label}</span>`);
+  return `<div class="checks">${chips.join("")}</div>`;
+}
+
+async function openHistory() {
+  const body = document.getElementById("history-body");
+  body.innerHTML = '<div class="history-empty">Loading…</div>';
+  document.getElementById("history-modal").classList.add("open");
+  await renderHistory();
+}
+
+async function renderHistory() {
+  const data = await (await fetch("/api/history")).json();
+  const body = document.getElementById("history-body");
+
+  if (!data.jobs.length) {
+    body.innerHTML = '<div class="history-empty">No jobs recorded yet.</div>';
+    return;
+  }
+
+  const rows = data.jobs.map((job) => `
+    <tr>
+      <td>${escapeHtml(new Date(job.created_at).toLocaleString())}</td>
+      <td>${escapeHtml(job.action || "")} #${job.post_id ?? "—"}</td>
+      <td>${escapeHtml(job.status || "")}${job.outcome ? " · " + escapeHtml(job.outcome) : ""}</td>
+      <td>$${(job.estimated_cost_usd || 0).toFixed(4)}</td>
+      <td>${undoCell(job)}</td>
+    </tr>`).join("");
+
+  body.innerHTML = `
+    <table>
+      <tr><th>When</th><th>Job</th><th>Result</th><th>Est. cost</th><th>Undo</th></tr>
+      ${rows}
+    </table>
+    <p class="type-tag" style="margin-top:12px">Total estimated: $${data.total_estimated_cost_usd.toFixed(4)} —
+    an estimate from published per-token rates, not a bill. DeepSeek's own dashboard is authoritative.</p>`;
+}
+
+function undoCell(job) {
+  const undo = job.undo || { kind: "none" };
+  if (undo.kind === "trash") {
+    return `<button class="btn-danger" onclick="undoJob('${job.job_id}')">Move to trash</button>`;
+  }
+  if (undo.kind === "revisions") {
+    return `<a class="link" href="${escapeHtml(undo.admin_url)}" target="_blank">Restore in wp-admin →</a>`;
+  }
+  return '<span class="type-tag">nothing written</span>';
+}
+
+async function undoJob(jobId) {
+  if (!confirm("Move the translated post to the WordPress trash? It can be restored from there.")) return;
+  const res = await fetch(`/api/jobs/${jobId}/undo`, {
+    method: "POST", headers: { "X-Dashboard-Token": DASHBOARD_TOKEN },
+  });
+  if (!res.ok) {
+    alert((await res.json()).detail || "Undo failed");
+    return;
+  }
+  await renderHistory();
+  loadPages();
+}
+
+function closeHistory() {
+  document.getElementById("history-modal").classList.remove("open");
+}
+
+// Glossary editor: reads and writes glossary/*.json in place. No new store,
+// no new schema -- the same files the translator already loads.
+let glossaries = {};
+let activeGlossary = null;
+
+async function openGlossary() {
+  glossaries = await (await fetch("/api/glossary")).json();
+  activeGlossary = Object.keys(glossaries)[0] || null;
+  document.getElementById("glossary-msg").textContent = "";
+  renderGlossary();
+  document.getElementById("glossary-modal").classList.add("open");
+}
+
+function renderGlossary() {
+  document.getElementById("glossary-tabs").innerHTML = Object.keys(glossaries)
+    .map((name) => `<button class="glossary-tab ${name === activeGlossary ? "active" : ""}" onclick="switchGlossary('${name}')">${escapeHtml(name)}</button>`)
+    .join("");
+
+  const entries = glossaries[activeGlossary] || [];
+  document.getElementById("glossary-body").innerHTML = entries.map((entry, i) => `
+    <div class="glossary-entry">
+      <input value="${escapeHtml(entry.source)}" oninput="editGlossary(${i},'source',this.value)" placeholder="source term">
+      <input value="${escapeHtml(entry.target)}" oninput="editGlossary(${i},'target',this.value)" placeholder="target term">
+      <input value="${escapeHtml(entry.language)}" oninput="editGlossary(${i},'language',this.value)" placeholder="lang">
+      <select onchange="editGlossary(${i},'status',this.value)">
+        ${["mandatory", "protected", "preferred"].map((s) => `<option ${entry.status === s ? "selected" : ""}>${s}</option>`).join("")}
+      </select>
+      <button class="btn-danger" onclick="removeGlossaryEntry(${i})">×</button>
+    </div>`).join("") || '<div class="history-empty">No terms yet.</div>';
+}
+
+function switchGlossary(name) { activeGlossary = name; renderGlossary(); }
+function editGlossary(index, field, value) { glossaries[activeGlossary][index][field] = value; }
+function removeGlossaryEntry(index) { glossaries[activeGlossary].splice(index, 1); renderGlossary(); }
+
+function addGlossaryEntry() {
+  if (!activeGlossary) return;
+  glossaries[activeGlossary].push({ source: "", target: "", language: "es", status: "mandatory", context: "", notes: "" });
+  renderGlossary();
+}
+
+async function saveGlossary() {
+  const btn = document.getElementById("glossary-save-btn");
+  const msg = document.getElementById("glossary-msg");
+  btn.disabled = true; btn.textContent = "Saving…";
+  const res = await fetch(`/api/glossary/${activeGlossary}`, {
+    method: "PUT", headers: { "Content-Type": "application/json", "X-Dashboard-Token": DASHBOARD_TOKEN },
+    body: JSON.stringify({ entries: glossaries[activeGlossary] }),
+  });
+  btn.disabled = false; btn.textContent = "Save";
+  msg.textContent = res.ok ? `Saved ${activeGlossary}.json` : (await res.json()).detail || "Save failed";
+  msg.style.color = res.ok ? "var(--good)" : "var(--bad)";
+}
+
+function closeGlossary() {
+  document.getElementById("glossary-modal").classList.remove("open");
+}
+
+async function loadMemory() {
+  const data = await (await fetch("/api/memory")).json();
+  const chip = document.getElementById("memory-chip");
+  if (!data.enabled || !data.entries) return;
+  chip.textContent = `memory: ${data.entries} phrases · ${data.hits} reuses`;
+  chip.title = "Blocks served from the cross-page translation memory, with no model call.";
+  chip.style.display = "";
+}
+
+async function loadCost() {
+  const data = await (await fetch("/api/history")).json();
+  const chip = document.getElementById("cost-chip");
+  if (!data.jobs.length) return;
+  chip.textContent = `≈ $${data.total_estimated_cost_usd.toFixed(4)} spent`;
+  chip.style.display = "";
+}
+
 function escapeHtml(s) {
   const div = document.createElement("div");
   div.textContent = s || "";
@@ -383,6 +662,8 @@ async function loadConfig() {
 
 loadConfig();
 loadPages();
+loadCost();
+loadMemory();
 </script>
 </body>
 </html>
